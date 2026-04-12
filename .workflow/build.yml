@@ -1,0 +1,39 @@
+name: flutter-build
+displayName: 'Flutter APK 构建'
+triggers:
+  push:
+    - matchType: PRECISE
+      branch: main
+stages:
+  - stage:
+      name: flutter-build-stage
+      displayName: 'Flutter 构建'
+      failFast: false
+      steps:
+        - step: shell@1
+          name: install-flutter
+          displayName: '安装 Flutter SDK'
+          inputs:
+            goals: |
+              echo "开始安装 Flutter SDK..."
+              export PUB_HOSTED_URL=https://pub.flutter-io.cn
+              export FLUTTER_STORAGE_BASE_URL=https://storage.flutter-io.cn
+              git clone https://github.com/flutter/flutter.git -b 3.24.5 --depth 1 /opt/flutter
+              export PATH="/opt/flutter/bin:$PATH"
+              flutter doctor -v
+              echo "Flutter SDK 安装完成"
+        - step: shell@1
+          name: build-apk
+          displayName: '构建 APK'
+          inputs:
+            goals: |
+              export PUB_HOSTED_URL=https://pub.flutter-io.cn
+              export FLUTTER_STORAGE_BASE_URL=https://storage.flutter-io.cn
+              export PATH="/opt/flutter/bin:$PATH"
+              export JAVA_HOME=/usr/lib/jvm/java-17
+              echo "开始获取依赖..."
+              flutter pub get
+              echo "开始构建 APK..."
+              flutter build apk --release --target-platform android-arm64,android-arm
+              echo "构建完成！"
+              ls -la build/app/outputs/flutter-apk/

@@ -1,0 +1,70 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history/
+.svn/
+migrate_working_dir/
+
+# Windows related
+*.bat
+!gradlew.bat
+*.cmd
+*.exe
+Thumbs.db
+Desktop.ini
+
+# Text files (except README)
+*.txt
+!README.md
+!BUILD_INSTRUCTIONS.md
+
+# Test reports and docs
+test/*.md
+test/*_report.*
+test/*_test.*
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+.packages
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio related
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# iOS build related
+**/ios/Flutter/.last_build_id
+**/ios/Pods/
+
+# Web build related
+lib/generated_plugin_registrant.dart
+
+# Exceptions to the above rules
+!/android/app/google-services.json
+
+# Git backup directories (old history)
+.git_backup_*/

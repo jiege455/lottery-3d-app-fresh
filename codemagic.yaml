@@ -1,0 +1,23 @@
+workflows:
+  android-release:
+    name: Android Release APK
+    max_build_duration: 120
+    environment:
+      flutter: 3.24.5
+      android: true
+    triggering:
+      events:
+        - push
+        - tag
+      branch_patterns:
+        - pattern: main
+          include: true
+        - pattern: master
+          include: true
+    scripts:
+      - name: Build APK
+        script: |
+          flutter pub get
+          flutter build apk --release
+    artifacts:
+      - build/app/outputs/flutter-apk/**/*.apk

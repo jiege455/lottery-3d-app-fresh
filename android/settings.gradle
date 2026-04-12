@@ -1,0 +1,38 @@
+pluginManagement {
+    def flutterSdkPath = {
+        def properties = new Properties()
+        def localPropertiesFile = file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localPropertiesFile.withInputStream { properties.load(it) }
+            def sdkPath = properties.getProperty("flutter.sdk")
+            if (sdkPath != null) {
+                return sdkPath
+            }
+        }
+        def envFlutterSdk = System.getenv("FLUTTER_ROOT")
+        if (envFlutterSdk != null) {
+            return envFlutterSdk
+        }
+        def flutterBin = "flutter".execute().text.trim()
+        if (flutterBin != null && !flutterBin.isEmpty()) {
+            return new File(flutterBin).parentFile.parent
+        }
+        throw new GradleException("Flutter SDK not found. Define FLUTTER_ROOT or set flutter.sdk in local.properties")
+    }()
+
+    includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
+
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+plugins {
+    id "dev.flutter.flutter-plugin-loader" version "1.0.0"
+    id "com.android.application" version "8.7.3" apply false
+    id "org.jetbrains.kotlin.android" version "2.0.21" apply false
+}
+
+include ":app"
