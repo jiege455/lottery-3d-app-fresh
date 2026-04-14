@@ -57,9 +57,14 @@ jobs:
       - name: Accept licenses & get deps
         run: |
           flutter --version
+          echo "Cleaning build cache..."
+          rm -rf android/.gradle
+          rm -rf android/build
+          rm -rf android/app/build
+          rm -rf build
           yes | sdkmanager --licenses || true
-          flutter pub get
           flutter clean
+          flutter pub get
           flutter precache
           flutter pub get
 
