@@ -50,7 +50,16 @@ class _EntryPageState extends State<EntryPage> {
     final val = double.tryParse(_multiplierController.text);
     if (val != null && val > 0) {
       try {
-        Provider.of<SettingsProvider>(context, listen: false).updateMultiplier(val);
+        final settings = Provider.of<SettingsProvider>(context, listen: false);
+        settings.updateMultiplier(val);
+        if (_parsedItems.isNotEmpty) {
+          setState(() {
+            for (final item in _parsedItems) {
+              item.multiplier = val;
+              item.baseAmount = settings.getPlayTypeAmount(item.playType);
+            }
+          });
+        }
       } catch (_) {}
     }
   }

@@ -24,6 +24,8 @@ class _CheckPageState extends State<CheckPage> {
   bool _checking = false;
   bool _betsLoaded = false;
   bool _syncing = false;
+  bool _loseExpanded = false;
+  static const int _collapsedLoseCount = 10;
   List<DrawRecord> _recentDraws = [];
 
   @override
@@ -60,8 +62,8 @@ class _CheckPageState extends State<CheckPage> {
     setState(() => _syncing = true);
     try {
       int totalCount = 0;
-      totalCount += await LotteryApiService.syncDraws(lotteryType: 1, count: 20);
-      totalCount += await LotteryApiService.syncDraws(lotteryType: 2, count: 20);
+      totalCount += await LotteryApiService.syncDraws(lotteryType: 1, count: 7);
+      totalCount += await LotteryApiService.syncDraws(lotteryType: 2, count: 7);
       await _loadRecentDraws();
       if (mounted) {
         if (totalCount > 0) {
@@ -97,7 +99,10 @@ class _CheckPageState extends State<CheckPage> {
       return;
     }
 
-    setState(() => _checking = true);
+    setState(() {
+      _checking = true;
+      _loseExpanded = false;
+    });
 
     final draw = DrawRecord(
       issue: issue.isEmpty ? '手动录入' : issue,
@@ -248,6 +253,8 @@ class _CheckPageState extends State<CheckPage> {
   List<Widget> _buildResultList() {
     final winResults = _results.where((r) => r.isWin).toList();
     final loseResults = _results.where((r) => !r.isWin).toList();
+    final needCollapse = loseResults.length > _collapsedLoseCount;
+    final displayLose = (_loseExpanded || !needCollapse) ? loseResults : loseResults.sublist(0, _collapsedLoseCount);
 
     return [
       if (winResults.isNotEmpty) ...[
@@ -256,7 +263,47 @@ class _CheckPageState extends State<CheckPage> {
       ],
       if (loseResults.isNotEmpty) ...[
         _buildSectionHeader('❌ 未中记录 (${loseResults.length})', AppColors.textLight),
-        ...loseResults.map((r) => _buildResultItem(r, false)),
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: displayLose.map((r) => _buildLoseResultItem(r)).toList(),
+          ),
+        ),
+        if (needCollapse) ...[
+          const SizedBox(height: 6),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            child: GestureDetector(
+              onTap: () => setState(() => _loseExpanded = !_loseExpanded),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight.withAlpha(51),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AppColors.primary.withAlpha(26)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _loseExpanded ? '收起未中记录' : '展开全部 (${loseResults.length}条)',
+                      style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      _loseExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ],
     ];
   }
@@ -278,5 +325,54 @@ class _CheckPageState extends State<CheckPage> {
         Expanded(child: Text('-${result.betAmount.toStringAsFixed(1)}', style: TextStyle(fontSize: 12, color: AppColors.textLight), textAlign: TextAlign.right)),
       ],
     ]));
+  }
+
+  Widget _buildLoseResultItem(CheckResult result) {
+    final itemWidth = (MediaQuery.of(context).size.width - 44) / 2;
+    return Container(
+      width: itemWidth,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.textLight.withAlpha(10),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppColors.border.withAlpha(40)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(result.bet.number, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, fontFamily: 'monospace')),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: AppColors.textLight.withAlpha(20),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: Text(result.bet.playTypeName, style: TextStyle(fontSize: 9, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Row(
+            children: [
+              Text('-${result.betAmount.toStringAsFixed(1)}元', style: TextStyle(fontSize: 10, color: AppColors.textLight)),
+              if (result.bet.multiplier != 1.0) ...[
+                const SizedBox(width: 3),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 0),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withAlpha(20),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: Text('×${result.bet.multiplier}', style: TextStyle(fontSize: 8, color: AppColors.warning, fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
