@@ -31,42 +31,34 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK Platform 34
-        run: sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
+      - name: Accept SDK licenses
+        run: yes | sdkmanager --licenses || true
 
-      - name: Build APK
+      - name: Get dependencies
         run: |
-          echo "=== Environment Info ==="
-          java -version
-          flutter --version
-
-          echo "=== Removing Windows-specific files ==="
-          rm -f android/local.properties
-          rm -f local.properties
           rm -f pubspec.lock
           rm -f .flutter-plugins
           rm -f .flutter-plugins-dependencies
-          rm -rf .dart_tool
-          rm -rf build
-          rm -rf android/.gradle
-          rm -rf android/build
-          rm -rf android/app/build
-
-          echo "=== Accepting SDK licenses ==="
-          yes | sdkmanager --licenses || true
-
-          echo "=== Getting dependencies ==="
           flutter pub get
 
-          echo "=== Building APK ==="
-          flutter build apk --release
+      - name: Build APK
+        run: flutter build apk --release
+        continue-on-error: true
 
-          echo "=== Searching for APK ==="
-          find . -name "*.apk" -type f 2>/dev/null || echo "No APK found"
+      - name: Search for APK files
+        if: always()
+        run: |
+          echo "=== Searching for APK files ==="
+          find . -name "*.apk" -type f 2>/dev/null
+          echo "=== Listing build output ==="
+          ls -la build/app/outputs/ 2>/dev/null || echo "No build/app/outputs/"
+          ls -la build/app/outputs/flutter-apk/ 2>/dev/null || echo "No flutter-apk/"
+          ls -la build/app/outputs/apk/ 2>/dev/null || echo "No apk/"
+          ls -la build/app/outputs/apk/release/ 2>/dev/null || echo "No apk/release/"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
-        if: success()
+        if: always()
         with:
           name: release-apk
           path: |

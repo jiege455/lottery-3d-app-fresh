@@ -34,7 +34,7 @@ def hasKeystore = keystorePropertiesFile.exists() && keystoreProperties['storeFi
 
 android {
     namespace "com.jiege.lottery_3d_app"
-    compileSdk = 34
+    compileSdk = 33
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -63,7 +63,7 @@ android {
     defaultConfig {
         applicationId "com.jiege.lottery_3d_app"
         minSdk = 21
-        targetSdk = 34
+        targetSdk = 33
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
