@@ -39,8 +39,6 @@ jobs:
 
       - name: Remove Windows local.properties
         run: |
-          git rm --cached android/local.properties 2>/dev/null || true
-          git rm --cached local.properties 2>/dev/null || true
           rm -f android/local.properties
           rm -f local.properties
 
@@ -51,26 +49,44 @@ jobs:
           rm -f .flutter-plugins-dependencies
           flutter pub get
 
-      - name: Build APK
-        run: flutter build apk --release
+      - name: Build APK with Gradle directly
+        run: |
+          cd android
+          export JAVA_HOME="${JAVA_HOME:-$RUNNER_JAVA_HOME}"
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          cd ..
 
       - name: Search for APK files
         if: always()
         run: |
           echo "=== Searching for APK files ==="
           find . -name "*.apk" -type f 2>/dev/null
-          echo "=== Listing build output ==="
+          echo "=== Listing build outputs ==="
           ls -la build/app/outputs/flutter-apk/ 2>/dev/null || echo "No flutter-apk/"
           ls -la build/app/outputs/apk/release/ 2>/dev/null || echo "No apk/release/"
+          ls -la android/app/build/outputs/apk/release/ 2>/dev/null || echo "No android apk/release/"
+          ls -la android/app/build/outputs/flutter-apk/ 2>/dev/null || echo "No android flutter-apk/"
+
+      - name: Copy APK to expected location
+        if: always()
+        run: |
+          mkdir -p build/app/outputs/flutter-apk/
+          APK=$(find . -name "app-release.apk" -type f 2>/dev/null | head -1)
+          if [ -n "$APK" ]; then
+            cp "$APK" build/app/outputs/flutter-apk/app-release.apk
+            echo "APK copied from: $APK"
+            ls -la build/app/outputs/flutter-apk/app-release.apk
+          else
+            echo "ERROR: No APK found anywhere!"
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: release-apk
-          path: |
-            build/app/outputs/flutter-apk/app-release.apk
-            build/app/outputs/apk/release/app-release.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 3
           if-no-files-found: warn
 
@@ -80,7 +96,6 @@ jobs:
         with:
           name: build-logs
           path: |
-            build/app/outputs/logs/**
             android/app/build/reports/**
             android/.gradle/daemon/*.out.log
           retention-days: 7
