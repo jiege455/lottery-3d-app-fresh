@@ -9,7 +9,7 @@ jobs:
   build:
     name: Build APK
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository
@@ -24,15 +24,19 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.3'
+          flutter-version: '3.24.5'
           channel: 'stable'
           cache: true
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Clean and build
+      - name: Build APK
         run: |
+          echo "=== Environment Info ==="
+          java -version
+          flutter --version
+
           echo "=== Removing Windows-specific files ==="
           rm -f android/local.properties
           rm -f local.properties
@@ -44,22 +48,46 @@ jobs:
           rm -rf android/.gradle
           rm -rf android/build
           rm -rf android/app/build
-          
+
           echo "=== Accepting SDK licenses ==="
           yes | sdkmanager --licenses || true
-          
-          echo "=== Flutter version ==="
-          flutter --version
-          
+
           echo "=== Getting dependencies ==="
           flutter pub get
-          
-          echo "=== Building APK ==="
-          flutter build apk --release
+
+          echo "=== Building APK with Gradle directly ==="
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee ../gradle_output.log
+          GRADLE_EXIT=${PIPESTATUS[0]}
+          cd ..
+          echo "Gradle exit code: $GRADLE_EXIT"
+
+          echo "=== Searching for APK files ==="
+          find . -name "*.apk" -type f 2>/dev/null || echo "No APK files found"
+
+          echo "=== Build output directory ==="
+          ls -laR build/ 2>/dev/null | head -30 || echo "No build directory"
+          ls -laR android/app/build/outputs/ 2>/dev/null | head -30 || echo "No outputs directory"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
+        if: success()
         with:
           name: release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: |
+            build/app/outputs/flutter-apk/*.apk
+            android/app/build/outputs/apk/**/*.apk
+            android/app/build/outputs/flutter-apk/*.apk
           retention-days: 3
+          if-no-files-found: warn
+
+      - name: Upload build logs on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: build-logs
+          path: |
+            gradle_output.log
+          retention-days: 7
+          if-no-files-found: ignore
