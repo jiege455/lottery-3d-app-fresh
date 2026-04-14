@@ -67,10 +67,13 @@ jobs:
           flutter pub get
           flutter precache
           flutter pub get
+          echo "Pub get completed successfully"
 
       - name: Build APK
         run: |
+          echo "Starting APK build..."
           flutter build apk --release --target-platform android-arm64,android-arm --verbose
+          echo "Build completed, checking for APK files..."
           echo "=== Looking for APK files ==="
           find build -name "*.apk" -type f
           echo "=== APK directory structure ==="
