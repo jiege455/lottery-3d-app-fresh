@@ -38,6 +38,10 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
     }
@@ -46,8 +50,8 @@ android {
         applicationId "com.jiege.lottery_3d_app"
         minSdk = 21
         targetSdk = 34
-        versionCode = flutterVersionCode.toInteger()
-        versionName = flutterVersionName
+        versionCode flutterVersionCode.toInteger()
+        versionName flutterVersionName
         multiDexEnabled true
         ndk {
             abiFilters 'armeabi-v7a', 'arm64-v8a'
@@ -57,10 +61,15 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.debug
-            minifyEnabled false
-            shrinkResources false
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+    }
+
+    lint {
+        disable 'InvalidPackage'
+        disable 'MissingTranslation'
     }
 }
 
