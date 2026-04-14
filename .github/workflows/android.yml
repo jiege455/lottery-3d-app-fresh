@@ -55,32 +55,16 @@ jobs:
           echo "=== Getting dependencies ==="
           flutter pub get
 
-          echo "=== Building APK with Gradle directly ==="
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee ../gradle_output.log
-          GRADLE_EXIT=${PIPESTATUS[0]}
-          cd ..
-          echo "Gradle exit code: $GRADLE_EXIT"
-
-          echo "=== Searching for APK files ==="
-          find . -name "*.apk" -type f 2>/dev/null || echo "No APK files found"
-
-          echo "=== Build output directory ==="
-          ls -laR build/ 2>/dev/null | head -30 || echo "No build directory"
-          ls -laR android/app/build/outputs/ 2>/dev/null | head -30 || echo "No outputs directory"
+          echo "=== Building APK ==="
+          flutter build apk --release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         if: success()
         with:
           name: release-apk
-          path: |
-            build/app/outputs/flutter-apk/*.apk
-            android/app/build/outputs/apk/**/*.apk
-            android/app/build/outputs/flutter-apk/*.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 3
-          if-no-files-found: warn
 
       - name: Upload build logs on failure
         uses: actions/upload-artifact@v4

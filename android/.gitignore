@@ -23,6 +23,9 @@ build/
 # Local configuration file (sdk path, etc)
 local.properties
 
+# Signing configuration
+key.properties
+
 # IntelliJ
 *.iml
 .idea/
