@@ -47,7 +47,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.5'
+          flutter-version: '3.22.3'
           channel: 'stable'
           cache: true
 
@@ -72,12 +72,21 @@ jobs:
       - name: Build APK
         run: |
           echo "Starting APK build..."
-          flutter build apk --release --target-platform android-arm64,android-arm --verbose
+          flutter build apk --release --target-platform android-arm64,android-arm
           echo "Build completed, checking for APK files..."
           echo "=== Looking for APK files ==="
-          find build -name "*.apk" -type f
+          find build -name "*.apk" -type f || true
           echo "=== APK directory structure ==="
           ls -laR build/app/outputs/ || true
+          # Copy APK to expected location if needed
+          if [ -f build/app/outputs/apk/release/app-release.apk ]; then
+            echo "Found APK in standard location"
+          elif [ -f build/app/outputs/flutter-apk/app-release.apk ]; then
+            echo "Found APK in flutter-apk location"
+          else
+            echo "Searching for APK..."
+            find . -name "*release*.apk" -type f || true
+          fi
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
