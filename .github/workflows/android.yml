@@ -34,6 +34,9 @@ jobs:
     needs: cleanup-artifacts
     timeout-minutes: 30
 
+    env:
+      FLUTTER_BASE_URL: https://storage.googleapis.com
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -56,53 +59,121 @@ jobs:
 
       - name: Accept licenses & get deps
         run: |
+          echo "=========================================="
           echo "=== Flutter Version ==="
           flutter --version
+          echo "=========================================="
           echo "=== Cleaning build cache ==="
           rm -rf android/.gradle
           rm -rf android/build
           rm -rf android/app/build
           rm -rf build
+          rm -rf .dart_tool
+          echo "Cache cleaned successfully"
+          echo "=========================================="
           echo "=== Accepting SDK licenses ==="
           yes | sdkmanager --licenses || true
+          sdkmanager --list_installed || true
+          echo "=========================================="
           echo "=== Running flutter clean ==="
           flutter clean
+          echo "=========================================="
           echo "=== Getting dependencies ==="
-          flutter pub get
+          flutter pub get --verbose
+          DEPS_EXIT_CODE=$?
+          if [ $DEPS_EXIT_CODE -ne 0 ]; then
+            echo "ERROR: flutter pub get failed with exit code $DEPS_EXIT_CODE"
+            exit 1
+          fi
+          echo "=========================================="
           echo "=== Dependencies resolved successfully ==="
 
-      - name: Build APK
+      - name: Build APK (with detailed logging)
         run: |
+          echo "=========================================="
           echo "Starting APK build..."
-          echo "Build command: flutter build apk --release --target-platform android-arm64,android-arm"
-          flutter build apk --release --target-platform android-arm64,android-arm --no-tree-shake-icons
-          BUILD_EXIT_CODE=$?
+          echo "=========================================="
+          echo "Build environment info:"
+          echo "- Flutter version:"
+          flutter --version
+          echo "- Java version:"
+          java -version
+          echo "- Gradle version (if available):"
+          ./android/gradlew --version || true
+          echo "=========================================="
+          
+          echo "Running build command..."
+          set +e
+          flutter build apk \
+            --release \
+            --target-platform android-arm64,android-arm \
+            --no-tree-shake-icons \
+            --verbose \
+            2>&1 | tee build_output.log
+          BUILD_EXIT_CODE=${PIPESTATUS[0]}
+          set -e
+          
+          echo "=========================================="
           echo "Build completed with exit code: $BUILD_EXIT_CODE"
+          echo "=========================================="
           
           if [ $BUILD_EXIT_CODE -ne 0 ]; then
-            echo "ERROR: Build failed!"
+            echo "❌ ERROR: Build failed!"
+            echo ""
+            echo "Last 100 lines of build output:"
+            tail -100 build_output.log || true
             exit 1
           fi
           
+          echo "=========================================="
           echo "=== Checking for APK files ==="
-          find build -name "*.apk" -type f 2>/dev/null || true
+          echo "=========================================="
           
-          if [ -f build/app/outputs/flutter-apk/app-release.apk ]; then
+          echo "Searching for .apk files in build directory..."
+          find build -name "*.apk" -type f 2>/dev/null || echo "No APK files found in build/"
+          
+          echo ""
+          echo "Checking standard locations..."
+          
+          APK_FOUND=false
+          APK_PATH=""
+          
+          if [ -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
             echo "✅ Found APK at: build/app/outputs/flutter-apk/app-release.apk"
             ls -lh build/app/outputs/flutter-apk/app-release.apk
-          elif [ -f build/app/outputs/apk/release/app-release.apk ]; then
+            APK_FOUND=true
+            APK_PATH="build/app/outputs/flutter-apk/app-release.apk"
+          elif [ -f "build/app/outputs/apk/release/app-release.apk" ]; then
             echo "✅ Found APK at: build/app/outputs/apk/release/app-release.apk"
             ls -lh build/app/outputs/apk/release/app-release.apk
+            APK_FOUND=true
+            APK_PATH="build/app/outputs/apk/release/app-release.apk"
           else
-            echo "❌ APK file not found in expected locations"
-            echo "Searching for any .apk files..."
-            find . -name "*.apk" -type f 2>/dev/null | head -10 || true
+            echo "⚠️  APK not found in expected locations"
+            echo ""
+            echo "Searching entire project directory..."
+            find . -name "*.apk" -type f 2>/dev/null | head -20 || echo "No APK files found anywhere"
+            
+            echo ""
             echo "Build output directory structure:"
-            find build -type d 2>/dev/null | head -20 || true
-            exit 1
+            ls -laR build/ 2>/dev/null | head -50 || echo "No build directory or empty"
+            
+            if [ "$APK_FOUND" = false ]; then
+              echo ""
+              echo "❌ ERROR: No APK file was generated!"
+              echo ""
+              echo "Build log summary:"
+              tail -200 build_output.log || true
+              exit 1
+            fi
           fi
+          
+          echo "=========================================="
+          echo "✅ Build successful! APK location: $APK_PATH"
+          echo "=========================================="
 
       - name: Upload APK artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: release-apk
@@ -111,6 +182,16 @@ jobs:
             build/app/outputs/apk/release/*.apk
           retention-days: 3
           if-no-files-found: error
+
+      - name: Upload build logs (if failed)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            build_output.log
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Build Summary
         if: always()
@@ -121,3 +202,4 @@ jobs:
           echo "- **Java Version**: 17 (Zulu)" >> $GITHUB_STEP_SUMMARY
           echo "- **Target Platforms**: arm64, arm" >> $GITHUB_STEP_SUMMARY
           echo "- **Build Type**: Release" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Date**: $(date)" >> $GITHUB_STEP_SUMMARY
