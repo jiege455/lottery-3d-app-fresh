@@ -46,6 +46,7 @@ test/*_test.*
 .pub/
 build/
 .packages
+local.properties
 
 # Symbolication related
 app.*.symbols

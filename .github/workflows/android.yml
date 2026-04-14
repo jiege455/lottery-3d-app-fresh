@@ -31,14 +31,31 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Accept licenses & get deps
+      - name: Clean and build
         run: |
+          echo "=== Removing Windows-specific files ==="
+          rm -f android/local.properties
+          rm -f local.properties
+          rm -f pubspec.lock
+          rm -f .flutter-plugins
+          rm -f .flutter-plugins-dependencies
+          rm -rf .dart_tool
+          rm -rf build
+          rm -rf android/.gradle
+          rm -rf android/build
+          rm -rf android/app/build
+          
+          echo "=== Accepting SDK licenses ==="
           yes | sdkmanager --licenses || true
-          flutter clean
+          
+          echo "=== Flutter version ==="
+          flutter --version
+          
+          echo "=== Getting dependencies ==="
           flutter pub get
-
-      - name: Build APK
-        run: flutter build apk --release
+          
+          echo "=== Building APK ==="
+          flutter build apk --release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
