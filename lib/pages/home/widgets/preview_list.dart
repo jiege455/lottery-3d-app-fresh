@@ -12,7 +12,7 @@ class PreviewList extends StatefulWidget {
 
 class _PreviewListState extends State<PreviewList> {
   bool _isExpanded = false;
-  static const int _collapsedCount = 10;
+  static const int _collapsedCount = 12;
 
   @override
   Widget build(BuildContext context) {
@@ -52,10 +52,13 @@ class _PreviewListState extends State<PreviewList> {
           const SizedBox(height: 10),
           LayoutBuilder(
             builder: (context, constraints) {
-              final itemWidth = (constraints.maxWidth - 6) / 2;
+              const minItemWidth = 100.0;
+              const spacing = 4.0;
+              final crossCount = (constraints.maxWidth / minItemWidth).floor().clamp(2, 5);
+              final itemWidth = (constraints.maxWidth - (crossCount - 1) * spacing) / crossCount;
               return Wrap(
-                spacing: 6,
-                runSpacing: 6,
+                spacing: spacing,
+                runSpacing: spacing,
                 children: displayItems.asMap().entries.map((entry) => _buildItem(context, entry.key + 1, entry.value, itemWidth)).toList(),
               );
             },
@@ -100,43 +103,32 @@ class _PreviewListState extends State<PreviewList> {
 
     return Container(
       width: itemWidth,
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       decoration: BoxDecoration(
         color: AppColors.primaryLight.withAlpha(77),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(4),
         border: Border.all(color: AppColors.border.withAlpha(77)),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(width: 18, child: Text('$index', style: const TextStyle(fontSize: 9, color: AppColors.textLight, fontWeight: FontWeight.w500))),
-          Expanded(
-            child: Text(item.number, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'monospace'), overflow: TextOverflow.ellipsis),
+          Text('$index', style: const TextStyle(fontSize: 8, color: AppColors.textLight, fontWeight: FontWeight.w500)),
+          const SizedBox(width: 2),
+          Flexible(
+            child: Text(item.number, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, fontFamily: 'monospace'), overflow: TextOverflow.ellipsis),
           ),
           if (item.multiplier != 1.0)
-            Container(
-              margin: const EdgeInsets.only(left: 1),
-              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
-              decoration: BoxDecoration(color: AppColors.warning.withAlpha(26), borderRadius: BorderRadius.circular(3)),
-              child: Text('×${item.multiplier}', style: const TextStyle(fontSize: 8, color: AppColors.warning, fontWeight: FontWeight.w600)),
+            Padding(
+              padding: const EdgeInsets.only(left: 1),
+              child: Text('×${item.multiplier}', style: const TextStyle(fontSize: 7, color: AppColors.warning, fontWeight: FontWeight.w600)),
             ),
-          Container(
-            margin: const EdgeInsets.only(left: 1),
-            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-            decoration: BoxDecoration(
-              color: item.color.withAlpha(26),
-              borderRadius: BorderRadius.circular(3),
-            ),
-            child: Text(item.playTypeName, style: TextStyle(fontSize: 8, color: item.color, fontWeight: FontWeight.w500)),
+          Padding(
+            padding: const EdgeInsets.only(left: 1),
+            child: Text(item.playTypeName, style: TextStyle(fontSize: 7, color: item.color, fontWeight: FontWeight.w500)),
           ),
-          Container(
-            margin: const EdgeInsets.only(left: 1),
-            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(3),
-              border: Border.all(color: AppColors.primary.withAlpha(77)),
-            ),
-            child: Text(totalAmount.toStringAsFixed(1), style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w600, color: AppColors.primary)),
+          Padding(
+            padding: const EdgeInsets.only(left: 1),
+            child: Text(totalAmount.toStringAsFixed(1), style: const TextStyle(fontSize: 7, fontWeight: FontWeight.w600, color: AppColors.primary)),
           ),
         ],
       ),
