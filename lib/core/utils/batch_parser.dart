@@ -38,10 +38,100 @@ class BatchParser {
     }
     map['组选'] = 'group_auto';
     map['组选：'] = 'group_auto';
+    map['豹子'] = 'baozi_single';
+    map['豹子：'] = 'baozi_single';
+    map['豹子:'] = 'baozi_single';
     return map;
   }();
 
   static final RegExp _posCompositeRegex = RegExp(r'百位?\s*(\d+).*?十位?\s*(\d+).*?个位?\s*(\d+)', dotAll: true);
+
+  static const List<String> _validChineseKeywords = [
+    '转圈组六全包', '转圈组三全包',
+    '沾边组六', '沾边组三',
+    '转圈组六', '转圈组三',
+    '双飞对子', '双飞组六',
+    '豹子直选', '豹子全包',
+    '一码定位', '二码定位',
+    '复式全包', '组三全包', '组六全包',
+    '前两位', '后两位',
+    '直选', '组三', '组六', '独胆',
+    '复式', '和数', '组选',
+    '豹子',
+    '大小', '单双',
+    '百位', '十位', '个位',
+    '首尾',
+    '大', '小', '单', '双',
+    '跨',
+    '百', '十', '个',
+  ];
+
+  static final List<String> _prefixKeywordsSorted = () {
+    final set = <String>{};
+    for (final pt in PlayTypes.all) {
+      set.add(pt.name);
+    }
+    set.add('组选');
+    set.add('豹子');
+    return set.toList()..sort((a, b) => b.length.compareTo(a.length));
+  }();
+
+  static bool _isChineseChar(String char) {
+    final code = char.codeUnitAt(0);
+    return (code >= 0x4e00 && code <= 0x9fff) ||
+        (code >= 0x3400 && code <= 0x4dbf) ||
+        (code >= 0x20000 && code <= 0x2a6df);
+  }
+
+  static String _filterUnrecognizedChinese(String line) {
+    final result = StringBuffer();
+    var i = 0;
+    while (i < line.length) {
+      if (!_isChineseChar(line[i])) {
+        result.write(line[i]);
+        i++;
+      } else {
+        var matched = false;
+        for (final keyword in _validChineseKeywords) {
+          if (i + keyword.length <= line.length &&
+              line.substring(i, i + keyword.length) == keyword) {
+            result.write(keyword);
+            i += keyword.length;
+            matched = true;
+            break;
+          }
+        }
+        if (!matched) i++;
+      }
+    }
+    return result.toString();
+  }
+
+  static String _ensurePrefixColon(String line) {
+    for (final prefix in _prefixKeywordsSorted) {
+      if (line.startsWith(prefix)) {
+        final afterPrefix = line.substring(prefix.length);
+        if (afterPrefix.isNotEmpty &&
+            !afterPrefix.startsWith(':') &&
+            !afterPrefix.startsWith('：')) {
+          return '$prefix：$afterPrefix';
+        }
+        break;
+      }
+    }
+    return line;
+  }
+
+  static String _preprocessInput(String input) {
+    final lines = input.split('\n');
+    final processedLines = <String>[];
+    for (final line in lines) {
+      var processed = _filterUnrecognizedChinese(line);
+      processed = _ensurePrefixColon(processed);
+      processedLines.add(processed);
+    }
+    return processedLines.join('\n');
+  }
 
   static bool _isPosCompositeFormat(String line) {
     final clean = line.replaceAll(_multiplierRegex, '').trim();
@@ -183,13 +273,16 @@ class BatchParser {
   static List<ParsedItem> parse(String input, {String? forcePlayType, double defaultMultiplier = 1.0}) {
     if (input.trim().isEmpty) return [];
 
-    if (_isMultiLinePosComposite(input)) {
-      final joined = input.replaceAll('\n', ' ').replaceAll('\r', ' ').trim();
+    final preprocessed = _preprocessInput(input);
+    if (preprocessed.trim().isEmpty) return [];
+
+    if (_isMultiLinePosComposite(preprocessed)) {
+      final joined = preprocessed.replaceAll('\n', ' ').replaceAll('\r', ' ').trim();
       return _parsePosComposite(joined, forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
     }
 
     final results = <ParsedItem>[];
-    final lines = input.split('\n').where((l) => l.trim().isNotEmpty).toList();
+    final lines = preprocessed.split('\n').where((l) => l.trim().isNotEmpty).toList();
     for (final line in lines) {
       final items = _parseLine(line.trim(), forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
       results.addAll(items);
@@ -276,8 +369,8 @@ class BatchParser {
 
   static String? _autoDetectPlayType(String line) {
     final clean = line.replaceAll(RegExp(r'[ *×x]\d+\.?\d*$'), '').trim();
-    if (clean == '大' || clean == '小') return 'bigsmall';
-    if (clean == '单' || clean == '双') return 'oddeven';
+    if (clean == '大' || clean == '小' || clean == '大小') return 'bigsmall';
+    if (clean == '单' || clean == '双' || clean == '单双') return 'oddeven';
     if (RegExp(r'^[0-9]$').hasMatch(clean)) return 'dan';
     if (RegExp(r'^(百|十|个)位?\d$').hasMatch(clean)) return 'pos1';
     if (RegExp(r'^(前两位|后两位|首尾),\d{2}$').hasMatch(clean)) return 'pos2';
