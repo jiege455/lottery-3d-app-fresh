@@ -144,44 +144,47 @@ class _BetHistoryListState extends State<BetHistoryList> {
             ],
           ),
           const Divider(height: 16),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final chipWidth = 90.0;
+              final crossCount = (constraints.maxWidth / chipWidth).floor().clamp(3, 6);
+              final actualWidth = (constraints.maxWidth - (crossCount - 1) * 4) / crossCount;
+              return Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                children: bets.map((bet) {
+                  Color playColor = AppColors.primary;
+                  try {
+                    final pt = PlayTypes.all.firstWhere((p) => p.code == bet.playType, orElse: () => PlayTypes.all.first);
+                    final colorKey = PlayTypes.categoryColorKey[pt.category] ?? 'basic';
+                    playColor = AppColors.playTypeColors[colorKey] ?? AppColors.primary;
+                  } catch (_) {}
+                  return Container(
+                    width: actualWidth,
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+                    decoration: BoxDecoration(color: playColor.withAlpha(26), borderRadius: BorderRadius.circular(4)),
+                    child: Text('${bet.number} ×${bet.multiplier}', style: TextStyle(fontSize: 10, color: playColor, fontWeight: FontWeight.w500, fontFamily: 'monospace'), overflow: TextOverflow.ellipsis),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
-                  children: bets.map((bet) {
-                    Color playColor = AppColors.primary;
-                    try {
-                      final pt = PlayTypes.all.firstWhere((p) => p.code == bet.playType, orElse: () => PlayTypes.all.first);
-                      final colorKey = PlayTypes.categoryColorKey[pt.category] ?? 'basic';
-                      playColor = AppColors.playTypeColors[colorKey] ?? AppColors.primary;
-                    } catch (_) {}
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(color: playColor.withAlpha(26), borderRadius: BorderRadius.circular(4)),
-                      child: Text('${bet.number}(${bet.playTypeName})×${bet.multiplier}', style: TextStyle(fontSize: 11, color: playColor, fontWeight: FontWeight.w500, fontFamily: 'monospace')),
-                    );
-                  }).toList(),
-                ),
+              TextButton(
+                onPressed: () => _confirmDeleteBatch(batchId, bets),
+                child: Text('删除批次', style: TextStyle(fontSize: 11, color: AppColors.danger)),
               ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              Row(
                 children: [
                   Text('${bets.length}注', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                  Text('${batchAmount.toStringAsFixed(1)}元', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.danger)),
+                  const SizedBox(width: 8),
+                  Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: AppColors.danger.withAlpha(26), borderRadius: BorderRadius.circular(10)), child: Text('${batchAmount.toStringAsFixed(1)}元', style: TextStyle(fontSize: 11, color: AppColors.danger, fontWeight: FontWeight.w600))),
                 ],
               ),
             ],
-          ),
-          const SizedBox(height: 6),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () => _confirmDeleteBatch(batchId, bets),
-              child: Text('删除批次', style: TextStyle(fontSize: 11, color: AppColors.danger)),
-            ),
           ),
         ],
       ),

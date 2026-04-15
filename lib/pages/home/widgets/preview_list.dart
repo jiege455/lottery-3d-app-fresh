@@ -50,10 +50,15 @@ class _PreviewListState extends State<PreviewList> {
             ],
           ),
           const SizedBox(height: 10),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: displayItems.asMap().entries.map((entry) => _buildItem(context, entry.key + 1, entry.value)).toList(),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final itemWidth = (constraints.maxWidth - 6) / 2;
+              return Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: displayItems.asMap().entries.map((entry) => _buildItem(context, entry.key + 1, entry.value, itemWidth)).toList(),
+              );
+            },
           ),
           if (needCollapse) ...[
             const SizedBox(height: 8),
@@ -90,12 +95,12 @@ class _PreviewListState extends State<PreviewList> {
     );
   }
 
-  Widget _buildItem(BuildContext context, int index, ParsedItem item) {
+  Widget _buildItem(BuildContext context, int index, ParsedItem item, double itemWidth) {
     final totalAmount = item.multiplier * item.baseAmount;
 
     return Container(
-      width: (MediaQuery.of(context).size.width - 54) / 2,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      width: itemWidth,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
       decoration: BoxDecoration(
         color: AppColors.primaryLight.withAlpha(77),
         borderRadius: BorderRadius.circular(6),
@@ -103,35 +108,35 @@ class _PreviewListState extends State<PreviewList> {
       ),
       child: Row(
         children: [
-          SizedBox(width: 20, child: Text('$index', style: const TextStyle(fontSize: 10, color: AppColors.textLight, fontWeight: FontWeight.w500))),
+          SizedBox(width: 18, child: Text('$index', style: const TextStyle(fontSize: 9, color: AppColors.textLight, fontWeight: FontWeight.w500))),
           Expanded(
-            child: Text(item.number, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'monospace'), overflow: TextOverflow.ellipsis),
+            child: Text(item.number, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'monospace'), overflow: TextOverflow.ellipsis),
           ),
           if (item.multiplier != 1.0)
             Container(
-              margin: const EdgeInsets.only(left: 2),
-              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+              margin: const EdgeInsets.only(left: 1),
+              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
               decoration: BoxDecoration(color: AppColors.warning.withAlpha(26), borderRadius: BorderRadius.circular(3)),
-              child: Text('×${item.multiplier}', style: const TextStyle(fontSize: 9, color: AppColors.warning, fontWeight: FontWeight.w600)),
+              child: Text('×${item.multiplier}', style: const TextStyle(fontSize: 8, color: AppColors.warning, fontWeight: FontWeight.w600)),
             ),
           Container(
-            margin: const EdgeInsets.only(left: 2),
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            margin: const EdgeInsets.only(left: 1),
+            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
             decoration: BoxDecoration(
               color: item.color.withAlpha(26),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(3),
             ),
-            child: Text(item.playTypeName, style: TextStyle(fontSize: 9, color: item.color, fontWeight: FontWeight.w500)),
+            child: Text(item.playTypeName, style: TextStyle(fontSize: 8, color: item.color, fontWeight: FontWeight.w500)),
           ),
           Container(
-            margin: const EdgeInsets.only(left: 2),
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            margin: const EdgeInsets.only(left: 1),
+            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
             decoration: BoxDecoration(
               color: AppColors.primaryLight,
               borderRadius: BorderRadius.circular(3),
               border: Border.all(color: AppColors.primary.withAlpha(77)),
             ),
-            child: Text(totalAmount.toStringAsFixed(1), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: AppColors.primary)),
+            child: Text(totalAmount.toStringAsFixed(1), style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w600, color: AppColors.primary)),
           ),
         ],
       ),
