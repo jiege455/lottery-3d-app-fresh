@@ -55,7 +55,9 @@ class _EntryPageState extends State<EntryPage> {
         if (_parsedItems.isNotEmpty) {
           setState(() {
             for (final item in _parsedItems) {
-              item.multiplier = val;
+              if (!item.isMultiplierCustomized) {
+                item.multiplier = val;
+              }
               item.baseAmount = settings.getPlayTypeAmount(item.playType);
             }
           });
@@ -167,7 +169,12 @@ class _EntryPageState extends State<EntryPage> {
             const SizedBox(height: 4),
             _buildMultiplierSection(),
             const SizedBox(height: 12),
-            PreviewList(items: _parsedItems),
+            PreviewList(items: _parsedItems, onItemUpdated: (index, item) {
+              setState(() {
+                final settings = Provider.of<SettingsProvider>(context, listen: false);
+                item.baseAmount = settings.getPlayTypeAmount(item.playType);
+              });
+            }),
             if (_parsedItems.isNotEmpty) ...[
               const SizedBox(height: 8),
               _buildSummaryCard(),

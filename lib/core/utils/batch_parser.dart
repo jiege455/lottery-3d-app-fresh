@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 
 class ParsedItem {
   final String number;
-  final String playType;
-  final String playTypeName;
+  String playType;
+  String playTypeName;
   double multiplier;
   Color color;
   double baseAmount;
+  bool isMultiplierCustomized;
 
   ParsedItem({
     required this.number,
@@ -16,6 +17,7 @@ class ParsedItem {
     this.multiplier = 1.0,
     required this.color,
     this.baseAmount = 2.0,
+    this.isMultiplierCustomized = false,
   });
 }
 
