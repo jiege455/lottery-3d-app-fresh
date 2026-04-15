@@ -66,9 +66,16 @@ class BatchParser {
     '百', '十', '个',
   ];
 
+  static final Set<String> _wholeLineNoNumberCodes = {
+    'bigsmall', 'oddeven',
+    'span0', 'span1', 'span2', 'span3', 'span4',
+    'span5', 'span6', 'span7', 'span8', 'span9',
+  };
+
   static final List<String> _prefixKeywordsSorted = () {
     final set = <String>{};
     for (final pt in PlayTypes.all) {
+      if (_wholeLineNoNumberCodes.contains(pt.code)) continue;
       set.add(pt.name);
     }
     set.add('组选');
@@ -101,7 +108,13 @@ class BatchParser {
             break;
           }
         }
-        if (!matched) i++;
+        if (!matched) {
+          final prevChar = result.isNotEmpty ? result.toString()[result.length - 1] : '';
+          if (RegExp(r'^\d$').hasMatch(prevChar)) {
+            result.write(' ');
+          }
+          i++;
+        }
       }
     }
     return result.toString();
@@ -363,7 +376,10 @@ class BatchParser {
       return _parseZqComposite(content, playTypeCode, defaultMultiplier);
     }
 
-    if (config.isWholeLine) return [_createItem(content, config, defaultMultiplier)];
+    if (config.isWholeLine) {
+      if (content.trim().isEmpty) return [];
+      return [_createItem(content, config, defaultMultiplier)];
+    }
     return _splitAndCreate(content, config, defaultMultiplier);
   }
 
