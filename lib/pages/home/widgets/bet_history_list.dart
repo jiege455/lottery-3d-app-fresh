@@ -59,7 +59,8 @@ class _BetHistoryListState extends State<BetHistoryList> {
 
   List<BetRecord> _getDisplayBets() {
     if (_isSearchMode) return _searchResults;
-    final bets = Provider.of<BetProvider>(context).bets;
+    final lotteryType = Provider.of<SettingsProvider>(context).defaultLotteryType;
+    final bets = Provider.of<BetProvider>(context).bets.where((b) => b.lotteryType == lotteryType).toList();
     if (_searchQuery.isEmpty) return bets;
     final query = _searchQuery.toLowerCase();
     return bets.where((b) =>
