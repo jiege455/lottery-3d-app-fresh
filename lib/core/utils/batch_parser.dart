@@ -384,7 +384,7 @@ class BatchParser {
   }
 
   static String? _autoDetectPlayType(String line) {
-    final clean = line.replaceAll(RegExp(r'[ *×x]\d+\.?\d*$'), '').trim();
+    final clean = line.replaceAll(RegExp(r'[ *×xX]\d+\.?\d*$'), '').trim();
     if (clean == '大' || clean == '小' || clean == '大小') return 'bigsmall';
     if (clean == '单' || clean == '双' || clean == '单双') return 'oddeven';
     if (RegExp(r'^[0-9]$').hasMatch(clean)) return 'dan';
@@ -450,7 +450,7 @@ class BatchParser {
     final mult = _extractMultiplier(number) ?? multiplier;
     var cleanNum = number.replaceAll(_multiplierRegex, '').trim();
     if (config.isWholeLine) {
-      cleanNum = cleanNum.replaceAll(RegExp(r'[ *×x]\d+\.?\d*$'), '').trim();
+      cleanNum = cleanNum.replaceAll(RegExp(r'[ *×xX]\d+\.?\d*$'), '').trim();
     }
     return ParsedItem(number: cleanNum.isEmpty ? number : cleanNum, playType: config.code, playTypeName: config.name, multiplier: mult, color: config.color, baseAmount: config.baseAmount);
   }

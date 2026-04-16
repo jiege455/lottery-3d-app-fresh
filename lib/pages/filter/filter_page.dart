@@ -81,7 +81,7 @@ class _FilterPageState extends State<FilterPage> {
 
     List<FilterResult> filteredResults;
     if (playTypeCode == 'group3') {
-      filteredResults = _results.where((r) => r.formType == '组三' || r.formType == '豹子').toList();
+      filteredResults = _results.where((r) => r.formType == '组三').toList();
     } else if (playTypeCode == 'group6') {
       filteredResults = _results.where((r) => r.formType == '组六').toList();
     } else {

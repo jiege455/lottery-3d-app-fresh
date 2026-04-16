@@ -30,11 +30,24 @@ class _BetHistoryListState extends State<BetHistoryList> {
   bool _isSelectMode = false;
   final Set<String> _expandedBatches = {};
   static const int _collapsedItemCount = 6;
+  List<BetRecord>? _lastBets;
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _checkDataReset(List<BetRecord> currentBets) {
+    if (_lastBets != null && _lastBets!.isNotEmpty && currentBets.isNotEmpty) {
+      final lastFirst = _lastBets!.first.batchId;
+      final currentFirst = currentBets.first.batchId;
+      if (lastFirst != currentFirst) {
+        _displayBatchCount = 10;
+        _expandedBatches.clear();
+      }
+    }
+    _lastBets = currentBets;
   }
 
   List<BetRecord> _getDisplayBets() {
@@ -205,6 +218,7 @@ class _BetHistoryListState extends State<BetHistoryList> {
   @override
   Widget build(BuildContext context) {
     final displayBets = _getDisplayBets();
+    _checkDataReset(displayBets);
     final groupedBets = _getGroupedBets(displayBets);
     final batchIds = groupedBets.keys.toList()..sort((a, b) {
       final aBets = groupedBets[a]!;
@@ -282,7 +296,7 @@ class _BetHistoryListState extends State<BetHistoryList> {
                   contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
-                          onPressed: () { _searchController.clear(); setState(() => _searchQuery = ''); },
+                          onPressed: () { _searchController.clear(); setState(() { _searchQuery = ''; _displayBatchCount = 10; _expandedBatches.clear(); }); },
                           icon: Icon(Icons.clear, size: 16, color: AppColors.textLight),
                         )
                       : null,
@@ -555,6 +569,7 @@ class _BetHistoryListState extends State<BetHistoryList> {
           onPressed: () async {
             Navigator.pop(ctx);
             await DatabaseHelper.instance.deleteBetsByBatchId(batchId);
+            _expandedBatches.remove(batchId);
             await Provider.of<BetProvider>(context, listen: false).loadBets();
             if (!mounted) return;
             ToastUtil.success(context, '已删除批次');

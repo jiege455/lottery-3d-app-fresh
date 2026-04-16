@@ -277,7 +277,9 @@ class CheckService {
   }
 
   static bool _isGroup3(String s) {
-    return s.split('').toSet().length < s.length;
+    final chars = s.split('');
+    final uniqueCount = chars.toSet().length;
+    return uniqueCount == 2;
   }
 
   static bool _isGroup6(String s) {
