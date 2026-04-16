@@ -50,13 +50,27 @@ class _DrawDataListState extends State<DrawDataList> {
     if (_syncing) return;
     setState(() => _syncing = true);
     try {
-      // 同时同步福彩 3D 和排列三
       int totalCount = 0;
-      totalCount += await LotteryApiService.syncDraws(lotteryType: 1, count: 20);
-      totalCount += await LotteryApiService.syncDraws(lotteryType: 2, count: 20);
+      int failCount = 0;
+      try {
+        totalCount += await LotteryApiService.syncDraws(lotteryType: 1, count: 20);
+      } catch (e) {
+        print('同步福彩3D失败: $e');
+        failCount++;
+      }
+      try {
+        totalCount += await LotteryApiService.syncDraws(lotteryType: 2, count: 20);
+      } catch (e) {
+        print('同步排列三失败: $e');
+        failCount++;
+      }
       await _loadData();
       if (mounted) {
-        if (totalCount > 0) {
+        if (failCount == 2) {
+          ToastUtil.error(context, '同步失败，请检查网络连接');
+        } else if (failCount > 0) {
+          ToastUtil.warning(context, '部分同步失败，成功新增 $totalCount 条');
+        } else if (totalCount > 0) {
           ToastUtil.success(context, '同步成功，新增 $totalCount 条开奖数据（福彩 3D+ 排列三）');
         } else {
           ToastUtil.success(context, '已同步，暂无新数据');

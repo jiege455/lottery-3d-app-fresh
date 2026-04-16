@@ -75,27 +75,22 @@ class LotteryApiService {
   }
 
   static Future<int> syncDraws({required int lotteryType, int count = 10}) async {
-    try {
-      final draws = await fetchLatestDraws(lotteryType: lotteryType, count: count);
-      if (draws.isEmpty) return 0;
+    final draws = await fetchLatestDraws(lotteryType: lotteryType, count: count);
+    if (draws.isEmpty) return 0;
 
-      final existingDraws = await DatabaseHelper.instance.getAllDraws(lotteryType: lotteryType);
-      final existingIssues = existingDraws.map((d) => d.issue).toSet();
+    final existingDraws = await DatabaseHelper.instance.getAllDraws(lotteryType: lotteryType);
+    final existingIssues = existingDraws.map((d) => d.issue).toSet();
 
-      int addedCount = 0;
-      for (final draw in draws) {
-        if (!existingIssues.contains(draw.issue)) {
-          await DatabaseHelper.instance.insertDraw(draw);
-          addedCount++;
-        }
+    int addedCount = 0;
+    for (final draw in draws) {
+      if (!existingIssues.contains(draw.issue)) {
+        await DatabaseHelper.instance.insertDraw(draw);
+        addedCount++;
       }
-
-      print('[LotteryApi] 同步完成: 新增 $addedCount 条');
-      return addedCount;
-    } catch (e) {
-      print('[LotteryApi] syncDraws error: $e');
-      return 0;
     }
+
+    print('[LotteryApi] 同步完成: 新增 $addedCount 条');
+    return addedCount;
   }
 
   static Future<DrawRecord?> getLatestDraw({required int lotteryType}) async {

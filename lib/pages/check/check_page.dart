@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/draw_record.dart';
-import '../../providers/bet_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/check_service.dart';
 import '../../services/lottery_api_service.dart';
@@ -27,6 +26,7 @@ class _CheckPageState extends State<CheckPage> {
   bool _loseExpanded = false;
   static const int _collapsedLoseCount = 10;
   List<DrawRecord> _recentDraws = [];
+  int _selectedLotteryType = 1;
 
   @override
   void initState() {
@@ -34,23 +34,19 @@ class _CheckPageState extends State<CheckPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && !_betsLoaded) {
         _betsLoaded = true;
+        _selectedLotteryType = Provider.of<SettingsProvider>(context, listen: false).defaultLotteryType;
         _initData();
       }
     });
   }
 
   Future<void> _initData() async {
-    try {
-      Provider.of<BetProvider>(context, listen: false).loadBets();
-    } catch (e) {
-      print('CheckPage._initData error: $e');
-    }
     _loadRecentDraws();
   }
 
   Future<void> _loadRecentDraws() async {
     try {
-      final draws = await DatabaseHelper.instance.getAllDraws(limit: 10);
+      final draws = await DatabaseHelper.instance.getAllDraws(lotteryType: _selectedLotteryType, limit: 10);
       if (mounted) setState(() => _recentDraws = draws);
     } catch (e) {
       print('CheckPage._loadRecentDraws error: $e');
@@ -62,11 +58,26 @@ class _CheckPageState extends State<CheckPage> {
     setState(() => _syncing = true);
     try {
       int totalCount = 0;
-      totalCount += await LotteryApiService.syncDraws(lotteryType: 1, count: 7);
-      totalCount += await LotteryApiService.syncDraws(lotteryType: 2, count: 7);
+      int failCount = 0;
+      try {
+        totalCount += await LotteryApiService.syncDraws(lotteryType: 1, count: 7);
+      } catch (e) {
+        print('同步福彩3D失败: $e');
+        failCount++;
+      }
+      try {
+        totalCount += await LotteryApiService.syncDraws(lotteryType: 2, count: 7);
+      } catch (e) {
+        print('同步排列三失败: $e');
+        failCount++;
+      }
       await _loadRecentDraws();
       if (mounted) {
-        if (totalCount > 0) {
+        if (failCount == 2) {
+          ToastUtil.error(context, '同步失败，请检查网络连接');
+        } else if (failCount > 0) {
+          ToastUtil.warning(context, '部分同步失败，成功新增 $totalCount 条');
+        } else if (totalCount > 0) {
           ToastUtil.success(context, '同步成功，新增 $totalCount 条开奖数据');
         } else {
           ToastUtil.success(context, '已同步，暂无新数据');
@@ -82,6 +93,10 @@ class _CheckPageState extends State<CheckPage> {
   void _selectDraw(DrawRecord draw) {
     _issueController.text = draw.issue;
     _numberController.text = draw.numbers;
+    if (draw.lotteryType != _selectedLotteryType) {
+      setState(() => _selectedLotteryType = draw.lotteryType);
+      _loadRecentDraws();
+    }
   }
 
   void _startCheck() {
@@ -93,11 +108,7 @@ class _CheckPageState extends State<CheckPage> {
       return;
     }
 
-    final bets = Provider.of<BetProvider>(context, listen: false).bets;
-    if (bets.isEmpty) {
-      ToastUtil.warning(context, '暂无投注记录');
-      return;
-    }
+    final typeName = _selectedLotteryType == 1 ? '福彩3D' : '排列三';
 
     setState(() {
       _checking = true;
@@ -111,20 +122,38 @@ class _CheckPageState extends State<CheckPage> {
       span: DrawRecord.getSpan(numbers),
       formType: DrawRecord.getFormType(numbers),
       drawDate: DateTime.now(),
+      lotteryType: _selectedLotteryType,
     );
 
-    Future.delayed(const Duration(milliseconds: 300), () {
+    Future.delayed(const Duration(milliseconds: 300), () async {
       if (!mounted) return;
-      final settings = Provider.of<SettingsProvider>(context, listen: false);
-      final winAmounts = <String, double>{};
-      for (final bet in bets) {
-        winAmounts[bet.playType] = settings.getPlayTypeWinAmount(bet.playType);
+      try {
+        final bets = await DatabaseHelper.instance.getAllBets(lotteryType: _selectedLotteryType);
+        if (bets.isEmpty) {
+          if (mounted) {
+            setState(() => _checking = false);
+            ToastUtil.warning(context, '暂无$typeName投注记录');
+          }
+          return;
+        }
+        final settings = Provider.of<SettingsProvider>(context, listen: false);
+        final winAmounts = <String, double>{};
+        for (final bet in bets) {
+          winAmounts[bet.playType] = settings.getPlayTypeWinAmount(bet.playType);
+        }
+        final results = CheckService.checkAll(bets, draw, winAmounts);
+        if (mounted) {
+          setState(() {
+            _results = results;
+            _checking = false;
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _checking = false);
+          ToastUtil.error(context, '校验失败: $e');
+        }
       }
-      final results = CheckService.checkAll(bets, draw, winAmounts);
-      setState(() {
-        _results = results;
-        _checking = false;
-      });
     });
   }
 
@@ -141,6 +170,8 @@ class _CheckPageState extends State<CheckPage> {
       padding: const EdgeInsets.only(bottom: 100),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 12), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('中奖校验', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)), Text('开发者：杰哥网络科技', style: TextStyle(fontSize: 10, color: AppColors.textLight))])),
+        _buildLotterySwitcher(),
+        const SizedBox(height: 8),
         _buildSyncCard(),
         const SizedBox(height: 8),
         _buildInputCard(),
@@ -158,6 +189,41 @@ class _CheckPageState extends State<CheckPage> {
           ])),
       ]),
     ));
+  }
+
+  void _onLotteryTypeChanged(int type) {
+    if (_selectedLotteryType == type) return;
+    setState(() {
+      _selectedLotteryType = type;
+      _results = [];
+    });
+    _loadRecentDraws();
+  }
+
+  Widget _buildLotterySwitcher() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(AppStyles.radiusSm)),
+      child: Row(children: [
+        Expanded(child: GestureDetector(
+          onTap: () => _onLotteryTypeChanged(1),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(color: _selectedLotteryType == 1 ? AppColors.primary : Colors.transparent, borderRadius: BorderRadius.circular(AppStyles.radiusXs)),
+            child: Text('福彩 3D', textAlign: TextAlign.center, style: TextStyle(color: _selectedLotteryType == 1 ? Colors.white : AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 14)),
+          ),
+        )),
+        Expanded(child: GestureDetector(
+          onTap: () => _onLotteryTypeChanged(2),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(color: _selectedLotteryType == 2 ? AppColors.primary : Colors.transparent, borderRadius: BorderRadius.circular(AppStyles.radiusXs)),
+            child: Text('排列三', textAlign: TextAlign.center, style: TextStyle(color: _selectedLotteryType == 2 ? Colors.white : AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 14)),
+          ),
+        )),
+      ]),
+    );
   }
 
   Widget _buildSyncCard() {
