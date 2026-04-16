@@ -95,6 +95,17 @@ class BetProvider with ChangeNotifier {
     }
   }
 
+  Future<void> updateBetsBatch(List<BetRecord> bets) async {
+    try {
+      for (final bet in bets) {
+        await _db.updateBet(bet);
+      }
+      await loadBets();
+    } catch (e) {
+      print('BetProvider.updateBetsBatch error: $e');
+    }
+  }
+
   Future<List<BetRecord>> searchBets({
     int? lotteryType,
     String? keyword,

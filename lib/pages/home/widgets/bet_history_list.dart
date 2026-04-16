@@ -146,6 +146,158 @@ class _BetHistoryListState extends State<BetHistoryList> {
     );
   }
 
+  void _showBatchEditDialog(String batchId, List<BetRecord> bets) {
+    final batchMultiplierCtl = TextEditingController();
+    final editControllers = <int, TextEditingController>{};
+    for (final bet in bets) {
+      if (bet.id != null) {
+        editControllers[bet.id!] = TextEditingController(text: bet.multiplier.toString());
+      }
+    }
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text('编辑批次 (${bets.length}注)'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight.withAlpha(51),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.edit_note, size: 16, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      const Text('批量修改倍数', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                      const Spacer(),
+                      SizedBox(
+                        width: 80,
+                        height: 32,
+                        child: TextField(
+                          controller: batchMultiplierCtl,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                            border: OutlineInputBorder(),
+                            hintText: '倍数',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      ElevatedButton(
+                        onPressed: () {
+                          final newMult = double.tryParse(batchMultiplierCtl.text);
+                          if (newMult == null || newMult <= 0) return;
+                          setDialogState(() {
+                            for (final ctl in editControllers.values) {
+                              ctl.text = newMult.toString();
+                            }
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
+                        child: const Text('应用', style: TextStyle(fontSize: 11)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: bets.map((bet) {
+                        if (bet.id == null) return const SizedBox.shrink();
+                        final ctl = editControllers[bet.id]!;
+                        Color playColor = AppColors.primary;
+                        try {
+                          final pt = PlayTypes.all.firstWhere((p) => p.code == bet.playType, orElse: () => PlayTypes.all.first);
+                          final colorKey = PlayTypes.categoryColorKey[pt.category] ?? 'basic';
+                          playColor = AppColors.playTypeColors[colorKey] ?? AppColors.primary;
+                        } catch (_) {}
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(color: playColor.withAlpha(26), borderRadius: BorderRadius.circular(4)),
+                                child: Text(bet.number, style: TextStyle(fontSize: 12, color: playColor, fontWeight: FontWeight.w600, fontFamily: 'monospace')),
+                              ),
+                              const SizedBox(width: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(color: playColor.withAlpha(15), borderRadius: BorderRadius.circular(3)),
+                                child: Text(bet.playTypeName, style: TextStyle(fontSize: 9, color: playColor)),
+                              ),
+                              const Spacer(),
+                              SizedBox(
+                                width: 60,
+                                height: 28,
+                                child: TextField(
+                                  controller: ctl,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  decoration: const InputDecoration(
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+                                    border: OutlineInputBorder(),
+                                    suffixText: '倍',
+                                    suffixStyle: TextStyle(fontSize: 9),
+                                  ),
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+            ElevatedButton(
+              onPressed: () async {
+                final updatedBets = <BetRecord>[];
+                for (final bet in bets) {
+                  if (bet.id == null) continue;
+                  final ctl = editControllers[bet.id];
+                  if (ctl == null) continue;
+                  final newMult = double.tryParse(ctl.text);
+                  if (newMult == null || newMult <= 0) continue;
+                  updatedBets.add(bet.copyWith(multiplier: newMult));
+                }
+                if (updatedBets.isEmpty) {
+                  ToastUtil.warning(context, '请输入有效倍数');
+                  return;
+                }
+                Navigator.pop(ctx);
+                await Provider.of<BetProvider>(context, listen: false).updateBetsBatch(updatedBets);
+                if (mounted) ToastUtil.success(context, '已更新${updatedBets.length}条记录');
+              },
+              child: const Text('保存全部'),
+            ),
+          ],
+        ),
+      ),
+    ).then((_) {
+      for (final ctl in editControllers.values) {
+        ctl.dispose();
+      }
+      batchMultiplierCtl.dispose();
+    });
+  }
+
   Future<void> _doAdvancedSearch(Map<String, dynamic> params) async {
     setState(() => _isSearching = true);
     try {
@@ -547,7 +699,7 @@ class _BetHistoryListState extends State<BetHistoryList> {
                     child: Text('删除批次', style: TextStyle(fontSize: 11, color: AppColors.danger)),
                   ),
                   TextButton(
-                    onPressed: () => _showEditDialog(bets.first),
+                    onPressed: () => _showBatchEditDialog(batchId, bets),
                     child: Text('编辑', style: TextStyle(fontSize: 11, color: AppColors.primary)),
                   ),
                 ],
