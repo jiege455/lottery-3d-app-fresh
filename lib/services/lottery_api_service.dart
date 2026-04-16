@@ -30,7 +30,7 @@ class LotteryApiService {
       }
 
       final results = <DrawRecord>[];
-      final list = data['data']?['list'] as List? ?? [];
+      final list = data['data']?['data']?['list'] as List? ?? [];
 
       for (var item in list) {
         if (item is Map) {
