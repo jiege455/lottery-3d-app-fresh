@@ -30,7 +30,17 @@ class _BetHistoryListState extends State<BetHistoryList> {
   bool _isSelectMode = false;
   final Set<String> _expandedBatches = {};
   static const int _collapsedItemCount = 6;
-  List<BetRecord>? _lastBets;
+  int? _lastLotteryType;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _lastLotteryType = Provider.of<SettingsProvider>(context, listen: false).defaultLotteryType;
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -38,16 +48,13 @@ class _BetHistoryListState extends State<BetHistoryList> {
     super.dispose();
   }
 
-  void _checkDataReset(List<BetRecord> currentBets) {
-    if (_lastBets != null && _lastBets!.isNotEmpty && currentBets.isNotEmpty) {
-      final lastFirst = _lastBets!.first.batchId;
-      final currentFirst = currentBets.first.batchId;
-      if (lastFirst != currentFirst) {
-        _displayBatchCount = 10;
-        _expandedBatches.clear();
-      }
+  void _checkLotteryTypeReset() {
+    final currentType = Provider.of<SettingsProvider>(context, listen: false).defaultLotteryType;
+    if (_lastLotteryType != null && _lastLotteryType != currentType) {
+      _displayBatchCount = 10;
+      _expandedBatches.clear();
     }
-    _lastBets = currentBets;
+    _lastLotteryType = currentType;
   }
 
   List<BetRecord> _getDisplayBets() {
@@ -218,7 +225,7 @@ class _BetHistoryListState extends State<BetHistoryList> {
   @override
   Widget build(BuildContext context) {
     final displayBets = _getDisplayBets();
-    _checkDataReset(displayBets);
+    _checkLotteryTypeReset();
     final groupedBets = _getGroupedBets(displayBets);
     final batchIds = groupedBets.keys.toList()..sort((a, b) {
       final aBets = groupedBets[a]!;
