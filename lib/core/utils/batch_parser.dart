@@ -44,7 +44,9 @@ class BatchParser {
     return map;
   }();
 
-  static final RegExp _posCompositeRegex = RegExp(r'百位?\s*(\d+).*?十位?\s*(\d+).*?个位?\s*(\d+)', dotAll: true);
+  static final RegExp _posCompositeRegex = RegExp(r'百位?[\s，,]*([\d，,]+).*?十位?[\s，,]*([\d，,]+).*?个位?[\s，,]*([\d，,]+)', dotAll: true);
+
+  static final RegExp _numGroupSuffixRegex = RegExp(r'^(\d{2,9})\s*组([六三63])?\s*([*×xX]?\d*\.?\d*)?$');
 
   static const List<String> _validChineseKeywords = [
     '转圈组六全包', '转圈组三全包',
@@ -167,9 +169,9 @@ class BatchParser {
     final match = _posCompositeRegex.firstMatch(cleanLine);
     if (match == null) return [];
 
-    final baiDigits = match.group(1)!.split('').toSet().toList()..sort();
-    final shiDigits = match.group(2)!.split('').toSet().toList()..sort();
-    final geDigits = match.group(3)!.split('').toSet().toList()..sort();
+    final baiDigits = match.group(1)!.replaceAll(RegExp(r'[，,]'), '').split('').toSet().toList()..sort();
+    final shiDigits = match.group(2)!.replaceAll(RegExp(r'[，,]'), '').split('').toSet().toList()..sort();
+    final geDigits = match.group(3)!.replaceAll(RegExp(r'[，,]'), '').split('').toSet().toList()..sort();
 
     final items = <ParsedItem>[];
     final effectiveMultiplier = mult ?? defaultMultiplier;
@@ -220,6 +222,52 @@ class BatchParser {
     }
 
     return items;
+  }
+
+  static List<ParsedItem> _parseNumGroupSuffix(String line, double defaultMultiplier) {
+    final match = _numGroupSuffixRegex.firstMatch(line.trim());
+    if (match == null) return [];
+
+    final digits = match.group(1)!;
+    final typeHint = match.group(2);
+    final multStr = match.group(3);
+
+    double? mult;
+    if (multStr != null && multStr.isNotEmpty) {
+      final cleaned = multStr.replaceFirst(RegExp(r'^[*×xX]'), '');
+      if (cleaned.isNotEmpty) mult = double.tryParse(cleaned);
+    }
+    final effectiveMultiplier = mult ?? defaultMultiplier;
+
+    final uniqueDigits = digits.split('').toSet().toList()..sort();
+    final count = uniqueDigits.length;
+    if (count < 2 || count > 9) return [];
+
+    String playTypeCode;
+    if (typeHint == '六' || typeHint == '6') {
+      if (count < 4) return [];
+      playTypeCode = 'g6_$count';
+    } else if (typeHint == '三' || typeHint == '3') {
+      playTypeCode = 'g3_$count';
+    } else {
+      if (count <= 3) {
+        playTypeCode = 'g3_$count';
+      } else {
+        playTypeCode = 'g6_$count';
+      }
+    }
+
+    final config = PlayTypes.getByCode(playTypeCode);
+    if (config == null) return [];
+
+    return [ParsedItem(
+      number: uniqueDigits.join(),
+      playType: config.code,
+      playTypeName: config.name,
+      multiplier: effectiveMultiplier,
+      color: config.color,
+      baseAmount: config.baseAmount,
+    )];
   }
 
   static List<ParsedItem> _parseZqComposite(String line, String playTypeCode, double defaultMultiplier) {
@@ -318,6 +366,8 @@ class BatchParser {
       return _parseZqComposite(line, forcePlayType!, defaultMultiplier);
     }
     if (forcePlayType != null) return _splitAndCreate(line, PlayTypes.getByCode(forcePlayType)!, defaultMultiplier);
+    final numGroupResult = _parseNumGroupSuffix(line, defaultMultiplier);
+    if (numGroupResult.isNotEmpty) return numGroupResult;
     final detected = _autoDetectPlayType(line);
     if (detected != null) {
       final pc = PlayTypes.getByCode(detected);
