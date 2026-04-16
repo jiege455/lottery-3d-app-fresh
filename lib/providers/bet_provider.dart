@@ -6,15 +6,18 @@ class BetProvider with ChangeNotifier {
   final DatabaseHelper _db = DatabaseHelper.instance;
   List<BetRecord> _bets = [];
   bool _isLoading = false;
+  int _totalCount = 0;
 
   List<BetRecord> get bets => _bets;
   bool get isLoading => _isLoading;
+  int get totalCount => _totalCount;
 
   Future<void> loadBets({int? lotteryType}) async {
     try {
       _isLoading = true;
       notifyListeners();
       _bets = await _db.getAllBets(lotteryType: lotteryType);
+      _totalCount = _bets.length;
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -48,9 +51,21 @@ class BetProvider with ChangeNotifier {
     try {
       await _db.deleteBet(id);
       _bets.removeWhere((b) => b.id == id);
+      _totalCount = _bets.length;
       notifyListeners();
     } catch (e) {
       print('BetProvider.deleteBet error: $e');
+    }
+  }
+
+  Future<void> deleteBetsByIds(List<int> ids) async {
+    try {
+      await _db.deleteBetsByIds(ids);
+      _bets.removeWhere((b) => b.id != null && ids.contains(b.id));
+      _totalCount = _bets.length;
+      notifyListeners();
+    } catch (e) {
+      print('BetProvider.deleteBetsByIds error: $e');
     }
   }
 
@@ -58,9 +73,79 @@ class BetProvider with ChangeNotifier {
     try {
       await _db.deleteAllBets();
       _bets.clear();
+      _totalCount = 0;
       notifyListeners();
     } catch (e) {
       print('BetProvider.deleteAllBets error: $e');
+    }
+  }
+
+  Future<void> updateBet(BetRecord bet) async {
+    try {
+      await _db.updateBet(bet);
+      final idx = _bets.indexWhere((b) => b.id == bet.id);
+      if (idx >= 0) {
+        _bets[idx] = bet;
+        notifyListeners();
+      } else {
+        await loadBets();
+      }
+    } catch (e) {
+      print('BetProvider.updateBet error: $e');
+    }
+  }
+
+  Future<List<BetRecord>> searchBets({
+    int? lotteryType,
+    String? keyword,
+    String? playType,
+    double? minAmount,
+    double? maxAmount,
+    DateTime? startDate,
+    DateTime? endDate,
+    int page = 1,
+    int pageSize = 50,
+  }) async {
+    try {
+      return await _db.searchBets(
+        lotteryType: lotteryType,
+        keyword: keyword,
+        playType: playType,
+        minAmount: minAmount,
+        maxAmount: maxAmount,
+        startDate: startDate,
+        endDate: endDate,
+        page: page,
+        pageSize: pageSize,
+      );
+    } catch (e) {
+      print('BetProvider.searchBets error: $e');
+      return [];
+    }
+  }
+
+  Future<int> getSearchBetsCount({
+    int? lotteryType,
+    String? keyword,
+    String? playType,
+    double? minAmount,
+    double? maxAmount,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      return await _db.getSearchBetsCount(
+        lotteryType: lotteryType,
+        keyword: keyword,
+        playType: playType,
+        minAmount: minAmount,
+        maxAmount: maxAmount,
+        startDate: startDate,
+        endDate: endDate,
+      );
+    } catch (e) {
+      print('BetProvider.getSearchBetsCount error: $e');
+      return 0;
     }
   }
 

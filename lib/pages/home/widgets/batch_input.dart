@@ -27,7 +27,7 @@ class BatchInput extends StatelessWidget {
             onChanged: onChanged,
             style: const TextStyle(fontFamily: 'monospace', fontSize: 14, letterSpacing: 0.5),
             decoration: InputDecoration(
-              hintText: '输入号码，支持逗号/横线/斜杠/空格分隔\n支持前缀标记玩法，如：直选：358\n支持倍数标记，如：358*2',
+              hintText: '输入号码，支持逗号/顿号/横线/斜杠/空格分隔\n支持前缀标记玩法，如：直选：358\n支持倍数标记，如：358*2',
               hintStyle: TextStyle(fontSize: 13, color: AppColors.textLight),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppStyles.radiusXs), borderSide: const BorderSide(color: AppColors.border)),
               contentPadding: const EdgeInsets.all(12),

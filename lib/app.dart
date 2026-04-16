@@ -4,6 +4,7 @@ import 'core/theme/app_theme.dart';
 import 'providers/bet_provider.dart';
 import 'providers/settings_provider.dart';
 import 'pages/home/entry_page.dart' as entry;
+import 'pages/filter/filter_page.dart' as filter;
 import 'pages/stats/stats_page.dart' as stats;
 import 'pages/check/check_page.dart' as check;
 import 'pages/manage/manage_page.dart' as manage;
@@ -13,17 +14,10 @@ class Lottery3DApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    print('[Lottery3DApp] Building MultiProvider...');
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) {
-          print('[Lottery3DApp] Creating BetProvider...');
-          return BetProvider();
-        }),
-        ChangeNotifierProvider(create: (_) {
-          print('[Lottery3DApp] Creating SettingsProvider...');
-          return SettingsProvider();
-        }),
+        ChangeNotifierProvider(create: (_) => BetProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
       ],
       child: MaterialApp(
         title: '福彩 3D 助手',
@@ -45,45 +39,35 @@ class MainScaffold extends StatefulWidget {
 class _MainScaffoldState extends State<MainScaffold> {
   int _currentIndex = 0;
   bool _initialized = false;
-  String? _initError;
 
   @override
   void initState() {
     super.initState();
-    print('[MainScaffold] initState called');
     _initializeProviders();
   }
 
   Future<void> _initializeProviders() async {
     if (!mounted) return;
-    print('[MainScaffold] Starting provider initialization...');
     try {
       final betProvider = Provider.of<BetProvider>(context, listen: false);
       final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
 
-      print('[MainScaffold] Loading settings...');
       await settingsProvider.loadSettings();
       if (!mounted) return;
-      print('[MainScaffold] Settings loaded successfully');
 
-      print('[MainScaffold] Loading bets...');
       await betProvider.loadBets();
       if (!mounted) return;
-      print('[MainScaffold] Bets loaded successfully');
 
       if (mounted) {
-        print('[MainScaffold] Setting initialized to true');
         setState(() {
           _initialized = true;
         });
       }
     } catch (e, stack) {
-      print('[MainScaffold] Provider initialization error: $e');
-      print('[MainScaffold] Stack trace: $stack');
+      print('Provider initialization error: $e\n$stack');
       if (mounted) {
         setState(() {
           _initialized = true;
-          _initError = e.toString();
         });
       }
     }
@@ -92,7 +76,6 @@ class _MainScaffoldState extends State<MainScaffold> {
   @override
   Widget build(BuildContext context) {
     if (!_initialized) {
-      print('[MainScaffold] Showing loading screen...');
       return Scaffold(
         body: Center(
           child: Column(
@@ -107,11 +90,6 @@ class _MainScaffoldState extends State<MainScaffold> {
       );
     }
 
-    if (_initError != null) {
-      print('[MainScaffold] Showing error screen: $_initError');
-    }
-
-    print('[MainScaffold] Building main scaffold, currentIndex: $_currentIndex');
     return Scaffold(
       body: _buildPage(_currentIndex),
       bottomNavigationBar: BottomNavigationBar(
@@ -120,10 +98,11 @@ class _MainScaffoldState extends State<MainScaffold> {
         type: BottomNavigationBarType.fixed,
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.textSecondary,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-        unselectedLabelStyle: const TextStyle(fontSize: 12),
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
+        unselectedLabelStyle: const TextStyle(fontSize: 11),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: '录入'),
+          BottomNavigationBarItem(icon: Icon(Icons.filter_alt), label: '缩水'),
           BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: '统计'),
           BottomNavigationBarItem(icon: Icon(Icons.verified_outlined), label: '校验'),
           BottomNavigationBarItem(icon: Icon(Icons.folder_open), label: '管理'),
@@ -134,27 +113,22 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   Widget _buildPage(int index) {
     try {
-      print('[MainScaffold] Building page at index: $index');
       switch (index) {
         case 0:
-          print('[MainScaffold] Creating EntryPage...');
           return const entry.EntryPage();
         case 1:
-          print('[MainScaffold] Creating StatsPage...');
-          return const stats.StatsPage();
+          return const filter.FilterPage();
         case 2:
-          print('[MainScaffold] Creating CheckPage...');
-          return const check.CheckPage();
+          return const stats.StatsPage();
         case 3:
-          print('[MainScaffold] Creating ManagePage...');
+          return const check.CheckPage();
+        case 4:
           return const manage.ManagePage();
         default:
-          print('[MainScaffold] Creating default EntryPage...');
           return const entry.EntryPage();
       }
     } catch (e, stack) {
-      print('[MainScaffold] Page build error: $e');
-      print('[MainScaffold] Stack trace: $stack');
+      print('Page build error: $e\n$stack');
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,

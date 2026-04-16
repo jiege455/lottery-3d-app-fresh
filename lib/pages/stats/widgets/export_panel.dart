@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -106,6 +107,55 @@ class ExportPanel extends StatelessWidget {
     return lines.join('\n');
   }
 
+  String _generateJSON(List<BetRecord> bets) {
+    final totalAmount = bets.fold<double>(0, (sum, b) => sum + b.multiplier * b.baseAmount);
+    final data = {
+      'exportInfo': {
+        'appName': '福彩3D助手',
+        'developer': '杰哥网络科技',
+        'exportTime': DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()),
+        'totalRecords': bets.length,
+        'totalAmount': totalAmount.toStringAsFixed(1),
+      },
+      'records': bets.map((b) => {
+        'number': b.number,
+        'playType': b.playType,
+        'playTypeName': b.playTypeName,
+        'lotteryType': b.lotteryType,
+        'lotteryName': b.lotteryType == 1 ? '福彩3D' : '排列三',
+        'multiplier': b.multiplier,
+        'baseAmount': b.baseAmount,
+        'amount': (b.multiplier * b.baseAmount).toStringAsFixed(1),
+        'batchId': b.batchId,
+        'createTime': DateFormat('yyyy-MM-dd HH:mm:ss').format(b.createTime),
+      }).toList(),
+    };
+    const encoder = JsonEncoder.withIndent('  ');
+    return encoder.convert(data);
+  }
+
+  String _generateMarkdown(List<BetRecord> bets) {
+    final totalAmount = bets.fold<double>(0, (sum, b) => sum + b.multiplier * b.baseAmount);
+    final buf = StringBuffer();
+    buf.writeln('# 福彩3D / 排列三 投注记录导出');
+    buf.writeln();
+    buf.writeln('> 开发者：杰哥网络科技 · 导出时间：${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())}');
+    buf.writeln('>');
+    buf.writeln('> 总记录数：${bets.length} · 总金额：${totalAmount.toStringAsFixed(1)} 元');
+    buf.writeln();
+    buf.writeln('| 序号 | 彩种 | 玩法 | 号码 | 倍数 | 单价(元) | 金额(元) | 时间 |');
+    buf.writeln('|------|------|------|------|------|----------|----------|------|');
+    for (var i = 0; i < bets.length; i++) {
+      final b = bets[i];
+      final amount = (b.multiplier * b.baseAmount).toStringAsFixed(1);
+      final lotteryName = b.lotteryType == 1 ? '福彩3D' : '排列三';
+      buf.writeln('| ${i + 1} | $lotteryName | ${b.playTypeName} | ${b.number} | ${b.multiplier}x | ${b.baseAmount.toStringAsFixed(1)} | $amount | ${DateFormat('MM-dd HH:mm').format(b.createTime)} |');
+    }
+    buf.writeln();
+    buf.writeln('**合计：${bets.length} 条记录 · 总金额：${totalAmount.toStringAsFixed(1)} 元**');
+    return buf.toString();
+  }
+
   Future<void> _shareFile(String content, String fileName, String mimeType, BuildContext context) async {
     try {
       final dir = await getTemporaryDirectory();
@@ -150,7 +200,30 @@ class ExportPanel extends StatelessWidget {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.copy, color: AppColors.purple),
+            leading: Icon(Icons.code, color: AppColors.purple),
+            title: const Text('导出 JSON 文件'),
+            subtitle: const Text('结构化数据格式，便于二次处理'),
+            onTap: () {
+              Navigator.pop(ctx);
+              final json = _generateJSON(bets);
+              final fileName = '投注记录_${DateFormat('yyyy-MM-dd').format(DateTime.now())}.json';
+              _shareFile(json, fileName, 'application/json', context);
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.article, color: AppColors.success),
+            title: const Text('导出 Markdown'),
+            subtitle: const Text('表格格式，适合文档和笔记'),
+            onTap: () {
+              Navigator.pop(ctx);
+              final md = _generateMarkdown(bets);
+              final fileName = '投注记录_${DateFormat('yyyy-MM-dd').format(DateTime.now())}.md';
+              _shareFile(md, fileName, 'text/markdown', context);
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.copy, color: AppColors.textSecondary),
             title: const Text('复制到剪贴板'),
             subtitle: const Text('复制格式化文本到剪贴板'),
             onTap: () async {
@@ -189,7 +262,7 @@ class ExportPanel extends StatelessWidget {
         contentPadding: EdgeInsets.zero,
         leading: const Icon(Icons.upload_file_outlined, color: AppColors.primary, size: 28),
         title: const Text('数据导出', style: TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text('共 ${bets.length} 条记录 / ${totalAmount.toStringAsFixed(1)} 元', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        subtitle: Text('共 ${bets.length} 条记录 / ${totalAmount.toStringAsFixed(1)} 元 · 支持 CSV/TXT/JSON/MD', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
         trailing: const Icon(Icons.chevron_right),
         onTap: () => _showExportDialog(context, bets),
       ),

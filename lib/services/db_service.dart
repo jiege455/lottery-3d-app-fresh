@@ -34,7 +34,7 @@ class DatabaseHelper {
   Future<Database> _initDB(String filePath) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
-    return await openDatabase(path, version: 2, onCreate: _onCreate, onUpgrade: _onUpgrade);
+    return await openDatabase(path, version: 3, onCreate: _onCreate, onUpgrade: _onUpgrade);
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -51,6 +51,11 @@ class DatabaseHelper {
         create_time TEXT NOT NULL
       )
     ''');
+    await db.execute('CREATE INDEX idx_bet_lottery_type ON bet_records(lottery_type)');
+    await db.execute('CREATE INDEX idx_bet_batch_id ON bet_records(batch_id)');
+    await db.execute('CREATE INDEX idx_bet_create_time ON bet_records(create_time)');
+    await db.execute('CREATE INDEX idx_bet_play_type ON bet_records(play_type)');
+
     await db.execute('''
       CREATE TABLE draw_records (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,6 +68,10 @@ class DatabaseHelper {
         lottery_type INTEGER DEFAULT 1
       )
     ''');
+    await db.execute('CREATE INDEX idx_draw_lottery_type ON draw_records(lottery_type)');
+    await db.execute('CREATE INDEX idx_draw_date ON draw_records(draw_date)');
+    await db.execute('CREATE INDEX idx_draw_issue ON draw_records(issue)');
+
     await db.execute('''
       CREATE TABLE settings (
         id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -85,10 +94,30 @@ class DatabaseHelper {
     if (oldVersion < 2) {
       try {
         await db.execute('DROP TABLE IF EXISTS custom_play_types');
-        print('Database upgraded to version 2: Removed custom_play_types table');
       } catch (e) {
-        print('Database upgrade error: $e');
+        print('Database upgrade v2 error: $e');
       }
+    }
+    if (oldVersion < 3) {
+      try {
+        await _createIndexIfNotExists(db, 'idx_bet_lottery_type', 'bet_records', 'lottery_type');
+        await _createIndexIfNotExists(db, 'idx_bet_batch_id', 'bet_records', 'batch_id');
+        await _createIndexIfNotExists(db, 'idx_bet_create_time', 'bet_records', 'create_time');
+        await _createIndexIfNotExists(db, 'idx_bet_play_type', 'bet_records', 'play_type');
+        await _createIndexIfNotExists(db, 'idx_draw_lottery_type', 'draw_records', 'lottery_type');
+        await _createIndexIfNotExists(db, 'idx_draw_date', 'draw_records', 'draw_date');
+        await _createIndexIfNotExists(db, 'idx_draw_issue', 'draw_records', 'issue');
+      } catch (e) {
+        print('Database upgrade v3 error: $e');
+      }
+    }
+  }
+
+  Future<void> _createIndexIfNotExists(Database db, String indexName, String table, String column) async {
+    try {
+      await db.execute('CREATE INDEX IF NOT EXISTS $indexName ON $table($column)');
+    } catch (e) {
+      print('Create index $indexName error: $e');
     }
   }
 
@@ -139,6 +168,177 @@ class DatabaseHelper {
     } catch (e) {
       print('getAllBets error: $e');
       return [];
+    }
+  }
+
+  Future<List<BetRecord>> getBetsPaged({int? lotteryType, int page = 1, int pageSize = 50}) async {
+    try {
+      final db = await database;
+      final offset = (page - 1) * pageSize;
+      if (lotteryType != null) {
+        final result = await db.query(
+          'bet_records',
+          where: 'lottery_type = ?',
+          whereArgs: [lotteryType],
+          orderBy: 'create_time DESC',
+          limit: pageSize,
+          offset: offset,
+        );
+        return result.map((e) => BetRecord.fromMap(e)).toList();
+      }
+      final result = await db.query(
+        'bet_records',
+        orderBy: 'create_time DESC',
+        limit: pageSize,
+        offset: offset,
+      );
+      return result.map((e) => BetRecord.fromMap(e)).toList();
+    } catch (e) {
+      print('getBetsPaged error: $e');
+      return [];
+    }
+  }
+
+  Future<List<BetRecord>> searchBets({
+    int? lotteryType,
+    String? keyword,
+    String? playType,
+    double? minAmount,
+    double? maxAmount,
+    DateTime? startDate,
+    DateTime? endDate,
+    int page = 1,
+    int pageSize = 50,
+  }) async {
+    try {
+      final db = await database;
+      final conditions = <String>[];
+      final args = <dynamic>[];
+
+      if (lotteryType != null) {
+        conditions.add('lottery_type = ?');
+        args.add(lotteryType);
+      }
+      if (keyword != null && keyword.isNotEmpty) {
+        conditions.add('(number LIKE ? OR play_type_name LIKE ? OR play_type LIKE ? OR batch_id LIKE ?)');
+        final pattern = '%$keyword%';
+        args.addAll([pattern, pattern, pattern, pattern]);
+      }
+      if (playType != null && playType.isNotEmpty) {
+        conditions.add('play_type = ?');
+        args.add(playType);
+      }
+      if (minAmount != null) {
+        conditions.add('(multiplier * base_amount) >= ?');
+        args.add(minAmount);
+      }
+      if (maxAmount != null) {
+        conditions.add('(multiplier * base_amount) <= ?');
+        args.add(maxAmount);
+      }
+      if (startDate != null) {
+        conditions.add('create_time >= ?');
+        args.add(startDate.toIso8601String());
+      }
+      if (endDate != null) {
+        conditions.add('create_time <= ?');
+        args.add(endDate.toIso8601String());
+      }
+
+      final whereClause = conditions.isEmpty ? null : conditions.join(' AND ');
+      final offset = (page - 1) * pageSize;
+
+      final result = await db.query(
+        'bet_records',
+        where: whereClause,
+        whereArgs: args.isEmpty ? null : args,
+        orderBy: 'create_time DESC',
+        limit: pageSize,
+        offset: offset,
+      );
+      return result.map((e) => BetRecord.fromMap(e)).toList();
+    } catch (e) {
+      print('searchBets error: $e');
+      return [];
+    }
+  }
+
+  Future<int> getSearchBetsCount({
+    int? lotteryType,
+    String? keyword,
+    String? playType,
+    double? minAmount,
+    double? maxAmount,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      final db = await database;
+      final conditions = <String>[];
+      final args = <dynamic>[];
+
+      if (lotteryType != null) {
+        conditions.add('lottery_type = ?');
+        args.add(lotteryType);
+      }
+      if (keyword != null && keyword.isNotEmpty) {
+        conditions.add('(number LIKE ? OR play_type_name LIKE ? OR play_type LIKE ? OR batch_id LIKE ?)');
+        final pattern = '%$keyword%';
+        args.addAll([pattern, pattern, pattern, pattern]);
+      }
+      if (playType != null && playType.isNotEmpty) {
+        conditions.add('play_type = ?');
+        args.add(playType);
+      }
+      if (minAmount != null) {
+        conditions.add('(multiplier * base_amount) >= ?');
+        args.add(minAmount);
+      }
+      if (maxAmount != null) {
+        conditions.add('(multiplier * base_amount) <= ?');
+        args.add(maxAmount);
+      }
+      if (startDate != null) {
+        conditions.add('create_time >= ?');
+        args.add(startDate.toIso8601String());
+      }
+      if (endDate != null) {
+        conditions.add('create_time <= ?');
+        args.add(endDate.toIso8601String());
+      }
+
+      final whereClause = conditions.isEmpty ? null : conditions.join(' AND ');
+      final result = await db.rawQuery(
+        'SELECT COUNT(*) as count FROM bet_records${whereClause != null ? " WHERE $whereClause" : ""}',
+        args.isEmpty ? null : args,
+      );
+      return Sqflite.firstIntValue(result) ?? 0;
+    } catch (e) {
+      print('getSearchBetsCount error: $e');
+      return 0;
+    }
+  }
+
+  Future<int> updateBet(BetRecord record) async {
+    try {
+      if (record.id == null) return 0;
+      final db = await database;
+      return await db.update('bet_records', record.toMap(), where: 'id = ?', whereArgs: [record.id]);
+    } catch (e) {
+      print('updateBet error: $e');
+      return 0;
+    }
+  }
+
+  Future<int> deleteBetsByIds(List<int> ids) async {
+    try {
+      if (ids.isEmpty) return 0;
+      final db = await database;
+      final placeholders = List.filled(ids.length, '?').join(',');
+      return await db.delete('bet_records', where: 'id IN ($placeholders)', whereArgs: ids);
+    } catch (e) {
+      print('deleteBetsByIds error: $e');
+      return 0;
     }
   }
 
