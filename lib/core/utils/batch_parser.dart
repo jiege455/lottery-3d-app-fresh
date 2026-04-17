@@ -44,9 +44,18 @@ class BatchParser {
     return map;
   }();
 
-  static final RegExp _posCompositeRegex = RegExp(r'百位?[\s，,]*([\d，,]+).*?十位?[\s，,]*([\d，,]+).*?个位?[\s，,]*([\d，,]+)', dotAll: true);
+  static final RegExp _posCompositeRegex = RegExp(r'百位?[\s：:，,、]*([\d，,、]+).*?十位?[\s：:，,、]*([\d，,、]+).*?个位?[\s：:，,、]*([\d，,、]+)', dotAll: true);
 
   static final RegExp _numGroupSuffixRegex = RegExp(r'^(\d{2,9})\s*组([六三63])?\s*([*×xX]?\d*\.?\d*)?$');
+
+  static final RegExp _singleGroupSuffixRegex = RegExp(r'([一二两三四五六七八九十\d]*)[单直]([一二两三四五六七八九十\d]*)组\s*$');
+
+  static int? _parseChineseNum(String s) {
+    if (s.isEmpty) return 1;
+    const cnMap = {'一': 1, '二': 2, '两': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10};
+    if (cnMap.containsKey(s)) return cnMap[s];
+    return int.tryParse(s);
+  }
 
   static const List<String> _validChineseKeywords = [
     '转圈组六全包', '转圈组三全包',
@@ -153,6 +162,153 @@ class BatchParser {
     return _posCompositeRegex.hasMatch(clean);
   }
 
+  static List<ParsedItem>? _tryParseMultiLinePosition(String input, {String? forcePlayType, double defaultMultiplier = 1.0}) {
+    final lines = input.split(RegExp(r'[\n\r]')).where((l) => l.trim().isNotEmpty).toList();
+    if (lines.length < 2) return null;
+
+    String? baiLine, shiLine, geLine;
+    final otherLines = <String>[];
+
+    for (final line in lines) {
+      final trimmed = line.trim();
+      if (baiLine == null && RegExp(r'^百位?[\s：:，,、]*\d').hasMatch(trimmed)) {
+        baiLine = trimmed;
+      } else if (shiLine == null && RegExp(r'^十位?[\s：:，,、]*\d').hasMatch(trimmed)) {
+        shiLine = trimmed;
+      } else if (geLine == null && RegExp(r'^个位?[\s：:，,、]*\d').hasMatch(trimmed)) {
+        geLine = trimmed;
+      } else {
+        otherLines.add(trimmed);
+      }
+    }
+
+    if (baiLine == null || shiLine == null || geLine == null) return null;
+
+    final baiDigits = _extractDigitsFromPosLine(baiLine);
+    final shiDigits = _extractDigitsFromPosLine(shiLine);
+    final geDigits = _extractDigitsFromPosLine(geLine);
+
+    if (baiDigits.isEmpty || shiDigits.isEmpty || geDigits.isEmpty) return null;
+
+    double? mult;
+    final posLines = [baiLine, shiLine, geLine].whereType<String>();
+    for (final posLine in posLines) {
+      final m = _extractMultiplier(posLine);
+      if (m != null) mult = m;
+    }
+    final effectiveDefault = mult ?? defaultMultiplier;
+
+    final compositeStr = '百位${baiDigits.join(',')} 十位${shiDigits.join(',')} 个位${geDigits.join(',')}';
+    final items = _parsePosComposite(compositeStr, forcePlayType: forcePlayType, defaultMultiplier: effectiveDefault);
+
+    if (otherLines.isNotEmpty) {
+      final otherResult = _tryParseSingleGroupLines(otherLines.join('\n'), forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
+      if (otherResult != null) {
+        items.addAll(otherResult);
+      } else {
+        final preprocessed = _preprocessInput(otherLines.join('\n'));
+        final otherLinesList = preprocessed.split('\n').where((l) => l.trim().isNotEmpty).toList();
+        for (final line in otherLinesList) {
+          final lineItems = _parseLine(line.trim(), forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
+          items.addAll(lineItems);
+        }
+      }
+    }
+
+    return items;
+  }
+
+  static List<String> _extractDigitsFromPosLine(String line) {
+    final withoutMult = line.replaceAll(_multiplierRegex, '').trim();
+    final digitsOnly = withoutMult.replaceAll(RegExp(r'[^\d]'), '');
+    return digitsOnly.split('').toSet().toList()..sort();
+  }
+
+  static List<String> _extractThreeDigitNumbers(String text) {
+    final parts = <String>[];
+    var cleaned = text;
+    for (final sep in separators) {
+      cleaned = cleaned.replaceAll(sep, ',');
+    }
+    cleaned = cleaned.replaceAll(RegExp(r'[\s\u3000]+'), ',');
+    for (final part in cleaned.split(',')) {
+      final trimmed = part.trim();
+      if (trimmed.isEmpty) continue;
+      if (RegExp(r'^\d{3}$').hasMatch(trimmed)) {
+        parts.add(trimmed);
+      } else if (RegExp(r'^\d+$').hasMatch(trimmed) && trimmed.length % 3 == 0 && trimmed.length <= 18) {
+        for (var i = 0; i < trimmed.length; i += 3) {
+          parts.add(trimmed.substring(i, i + 3));
+        }
+      }
+    }
+    return parts;
+  }
+
+  static List<ParsedItem>? _tryParseSingleGroupLines(String input, {String? forcePlayType, double defaultMultiplier = 1.0}) {
+    final lines = input.split(RegExp(r'[\n\r]')).where((l) => l.trim().isNotEmpty).toList();
+    final results = <ParsedItem>[];
+    final normalLines = <String>[];
+    var hasSingleGroup = false;
+
+    for (final line in lines) {
+      final trimmed = line.trim();
+      final match = _singleGroupSuffixRegex.firstMatch(trimmed);
+      if (match == null) {
+        normalLines.add(trimmed);
+        continue;
+      }
+
+      final beforeSuffix = trimmed.substring(0, match.start).trim();
+      final singleMult = (_parseChineseNum(match.group(1) ?? '') ?? 1).toDouble();
+      final groupMult = (_parseChineseNum(match.group(2) ?? '') ?? 1).toDouble();
+
+      final numbers = _extractThreeDigitNumbers(beforeSuffix);
+      if (numbers.isEmpty) {
+        normalLines.add(trimmed);
+        continue;
+      }
+
+      hasSingleGroup = true;
+      for (final num in numbers) {
+        final singleConfig = PlayTypes.getByCode('single')!;
+        results.add(ParsedItem(
+          number: num,
+          playType: 'single',
+          playTypeName: '直选',
+          multiplier: singleMult,
+          color: singleConfig.color,
+          baseAmount: singleConfig.baseAmount,
+        ));
+
+        final hasDup = _hasDuplicateDigit(num);
+        final groupCode = hasDup ? 'group3' : 'group6';
+        final groupConfig = PlayTypes.getByCode(groupCode)!;
+        results.add(ParsedItem(
+          number: num,
+          playType: groupCode,
+          playTypeName: hasDup ? '组三' : '组六',
+          multiplier: groupMult,
+          color: groupConfig.color,
+          baseAmount: groupConfig.baseAmount,
+        ));
+      }
+    }
+
+    if (!hasSingleGroup) return null;
+
+    if (normalLines.isNotEmpty) {
+      final preprocessed = _preprocessInput(normalLines.join('\n'));
+      final normalLinesList = preprocessed.split('\n').where((l) => l.trim().isNotEmpty).toList();
+      for (final line in normalLinesList) {
+        final lineItems = _parseLine(line.trim(), forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
+        results.addAll(lineItems);
+      }
+    }
+
+    return results;
+  }
+
   static bool _isMultiLinePosComposite(String input) {
     final joined = input.replaceAll('\n', ' ').replaceAll('\r', ' ').trim();
     if (!_isPosCompositeFormat(joined)) return false;
@@ -169,9 +325,9 @@ class BatchParser {
     final match = _posCompositeRegex.firstMatch(cleanLine);
     if (match == null) return [];
 
-    final baiDigits = match.group(1)!.replaceAll(RegExp(r'[，,]'), '').split('').toSet().toList()..sort();
-    final shiDigits = match.group(2)!.replaceAll(RegExp(r'[，,]'), '').split('').toSet().toList()..sort();
-    final geDigits = match.group(3)!.replaceAll(RegExp(r'[，,]'), '').split('').toSet().toList()..sort();
+    final baiDigits = match.group(1)!.replaceAll(RegExp(r'[，,、]'), '').split('').toSet().toList()..sort();
+    final shiDigits = match.group(2)!.replaceAll(RegExp(r'[，,、]'), '').split('').toSet().toList()..sort();
+    final geDigits = match.group(3)!.replaceAll(RegExp(r'[，,、]'), '').split('').toSet().toList()..sort();
 
     final items = <ParsedItem>[];
     final effectiveMultiplier = mult ?? defaultMultiplier;
@@ -296,6 +452,12 @@ class BatchParser {
 
   static List<ParsedItem> parse(String input, {String? forcePlayType, double defaultMultiplier = 1.0}) {
     if (input.trim().isEmpty) return [];
+
+    final multiLinePosResult = _tryParseMultiLinePosition(input, forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
+    if (multiLinePosResult != null) return multiLinePosResult;
+
+    final singleGroupResult = _tryParseSingleGroupLines(input, forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
+    if (singleGroupResult != null) return singleGroupResult;
 
     final preprocessed = _preprocessInput(input);
     if (preprocessed.trim().isEmpty) return [];
