@@ -50,6 +50,8 @@ class BatchParser {
 
   static final RegExp _singleGroupSuffixRegex = RegExp(r'([一二两三四五六七八九十\d]*)[单直]([一二两三四五六七八九十\d]*)组\s*$');
 
+  static final RegExp _singleGroupGeSuffixRegex = RegExp(r'直组各([一二两三四五六七八九十\d]*)倍?\s*$');
+
   static int? _parseChineseNum(String s) {
     if (s.isEmpty) return 1;
     const cnMap = {'一': 1, '二': 2, '两': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10};
@@ -253,46 +255,78 @@ class BatchParser {
 
     for (final line in lines) {
       final trimmed = line.trim();
+
+      final geMatch = _singleGroupGeSuffixRegex.firstMatch(trimmed);
+      if (geMatch != null) {
+        final beforeSuffix = trimmed.substring(0, geMatch.start).trim();
+        final mult = (_parseChineseNum(geMatch.group(1) ?? '') ?? 1).toDouble();
+        final numbers = _extractThreeDigitNumbers(beforeSuffix);
+        if (numbers.isNotEmpty) {
+          hasSingleGroup = true;
+          for (final num in numbers) {
+            final singleConfig = PlayTypes.getByCode('single')!;
+            results.add(ParsedItem(
+              number: num,
+              playType: 'single',
+              playTypeName: '直选',
+              multiplier: mult,
+              color: singleConfig.color,
+              baseAmount: singleConfig.baseAmount,
+            ));
+
+            final hasDup = _hasDuplicateDigit(num);
+            final groupCode = hasDup ? 'group3' : 'group6';
+            final groupConfig = PlayTypes.getByCode(groupCode)!;
+            results.add(ParsedItem(
+              number: num,
+              playType: groupCode,
+              playTypeName: hasDup ? '组三' : '组六',
+              multiplier: mult,
+              color: groupConfig.color,
+              baseAmount: groupConfig.baseAmount,
+            ));
+          }
+          continue;
+        }
+      }
+
       final match = _singleGroupSuffixRegex.firstMatch(trimmed);
-      if (match == null) {
-        normalLines.add(trimmed);
-        continue;
+      if (match != null) {
+        final beforeSuffix = trimmed.substring(0, match.start).trim();
+        final singleMult = (_parseChineseNum(match.group(1) ?? '') ?? 1).toDouble();
+        final groupMult = (_parseChineseNum(match.group(2) ?? '') ?? 1).toDouble();
+
+        final numbers = _extractThreeDigitNumbers(beforeSuffix);
+        if (numbers.isNotEmpty) {
+          hasSingleGroup = true;
+          for (final num in numbers) {
+            final singleConfig = PlayTypes.getByCode('single')!;
+            results.add(ParsedItem(
+              number: num,
+              playType: 'single',
+              playTypeName: '直选',
+              multiplier: singleMult,
+              color: singleConfig.color,
+              baseAmount: singleConfig.baseAmount,
+            ));
+
+            final hasDup = _hasDuplicateDigit(num);
+            final groupCode = hasDup ? 'group3' : 'group6';
+            final groupConfig = PlayTypes.getByCode(groupCode)!;
+            results.add(ParsedItem(
+              number: num,
+              playType: groupCode,
+              playTypeName: hasDup ? '组三' : '组六',
+              multiplier: groupMult,
+              color: groupConfig.color,
+              baseAmount: groupConfig.baseAmount,
+            ));
+          }
+          continue;
+        }
       }
 
-      final beforeSuffix = trimmed.substring(0, match.start).trim();
-      final singleMult = (_parseChineseNum(match.group(1) ?? '') ?? 1).toDouble();
-      final groupMult = (_parseChineseNum(match.group(2) ?? '') ?? 1).toDouble();
-
-      final numbers = _extractThreeDigitNumbers(beforeSuffix);
-      if (numbers.isEmpty) {
-        normalLines.add(trimmed);
-        continue;
-      }
-
-      hasSingleGroup = true;
-      for (final num in numbers) {
-        final singleConfig = PlayTypes.getByCode('single')!;
-        results.add(ParsedItem(
-          number: num,
-          playType: 'single',
-          playTypeName: '直选',
-          multiplier: singleMult,
-          color: singleConfig.color,
-          baseAmount: singleConfig.baseAmount,
-        ));
-
-        final hasDup = _hasDuplicateDigit(num);
-        final groupCode = hasDup ? 'group3' : 'group6';
-        final groupConfig = PlayTypes.getByCode(groupCode)!;
-        results.add(ParsedItem(
-          number: num,
-          playType: groupCode,
-          playTypeName: hasDup ? '组三' : '组六',
-          multiplier: groupMult,
-          color: groupConfig.color,
-          baseAmount: groupConfig.baseAmount,
-        ));
-      }
+      normalLines.add(trimmed);
     }
 
     if (!hasSingleGroup) return null;
