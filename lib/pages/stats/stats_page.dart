@@ -22,6 +22,8 @@ class _StatsPageState extends State<StatsPage> {
   bool _loaded = false;
   List<dynamic> _filteredBets = [];
   bool _hasActiveFilter = false;
+  final Set<String> _expandedGroups = {};
+  static const int _collapsedCount = 10;
 
   @override
   void initState() {
@@ -287,6 +289,9 @@ class _StatsPageState extends State<StatsPage> {
           final color = config?.color ?? AppColors.primary;
           final amount = bets.fold<double>(0, (sum, b) => sum + b.multiplier * b.baseAmount);
           final totalForType = bets.length;
+          final isExpanded = _expandedGroups.contains(e.key);
+          final displayBets = isExpanded ? bets : bets.take(_collapsedCount).toList();
+          final hasMore = bets.length > _collapsedCount;
 
           return Container(
             margin: const EdgeInsets.only(bottom: 10),
@@ -302,12 +307,42 @@ class _StatsPageState extends State<StatsPage> {
                 Text('${amount.toStringAsFixed(1)} 元', style: TextStyle(fontSize: 12, color: AppColors.danger, fontWeight: FontWeight.w600)),
               ]),
               const SizedBox(height: 8),
-              Wrap(spacing: 4, runSpacing: 4, children: bets.take(50).map((b) => Container(
+              Wrap(spacing: 4, runSpacing: 4, children: displayBets.map((b) => Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                 decoration: BoxDecoration(color: color.withAlpha(20), borderRadius: BorderRadius.circular(4)),
                 child: Text('${b.number}${b.multiplier != 1.0 ? "×${b.multiplier}" : ""}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: color, fontFamily: 'monospace')),
               )).toList()),
-              if (bets.length > 50) Padding(padding: const EdgeInsets.only(top: 4), child: Text('...还有${bets.length - 50} 注', style: TextStyle(fontSize: 10, color: AppColors.textLight))),
+              if (hasMore) GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if (isExpanded) {
+                      _expandedGroups.remove(e.key);
+                    } else {
+                      _expandedGroups.add(e.key);
+                    }
+                  });
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(color: color.withAlpha(15), borderRadius: BorderRadius.circular(4), border: Border.all(color: color.withAlpha(30))),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        isExpanded ? '收起' : '展开全部（共${bets.length}注，还有${bets.length - _collapsedCount}注未显示）',
+                        style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                        size: 14,
+                        color: color,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ]),
           );
         }),
