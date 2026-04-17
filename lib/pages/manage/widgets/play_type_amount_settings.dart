@@ -129,6 +129,8 @@ class _PlayTypeAmountSettingsPageState extends State<PlayTypeAmountSettingsPage>
   }
 
   Widget _buildPlayTypeItem(String code, String name, double defaultAmount, SettingsProvider settings, bool isLast) {
+    final defaultOdds = CheckService.oddsMap[code] ?? 0.0;
+    final defaultWin = defaultAmount * defaultOdds;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(border: isLast ? null : Border(bottom: BorderSide(color: AppColors.border.withAlpha(77)))),
@@ -137,7 +139,7 @@ class _PlayTypeAmountSettingsPageState extends State<PlayTypeAmountSettingsPage>
           flex: 2,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(name, style: const TextStyle(fontWeight: FontWeight.w500)),
-            Text('默认 ${defaultAmount.toStringAsFixed(1)} 元', style: TextStyle(fontSize: 11, color: AppColors.textLight)),
+            Text('默认投注 ${defaultAmount.toStringAsFixed(1)} 元 | 默认中奖 ${defaultWin.toStringAsFixed(1)} 元', style: TextStyle(fontSize: 11, color: AppColors.textLight)),
           ]),
         ),
         Column(children: [
