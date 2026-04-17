@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/play_types.dart';
@@ -50,6 +51,16 @@ class _FilterPageState extends State<FilterPage> {
       );
       _hasSearched = true;
     });
+  }
+
+  void _copyResults() {
+    if (_results.isEmpty) {
+      ToastUtil.warning(context, '没有可复制的结果');
+      return;
+    }
+    final text = _results.map((r) => r.number).join(' ');
+    Clipboard.setData(ClipboardData(text: text));
+    ToastUtil.success(context, '已复制 ${_results.length} 个号码');
   }
 
   void _reset() {
@@ -578,10 +589,20 @@ class _FilterPageState extends State<FilterPage> {
             children: [
               const Text('过滤结果', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               if (_results.isNotEmpty)
-                TextButton.icon(
-                  onPressed: _showSaveDialog,
-                  icon: const Icon(Icons.save, size: 16),
-                  label: const Text('保存为投注', style: TextStyle(fontSize: 12)),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextButton.icon(
+                      onPressed: _copyResults,
+                      icon: const Icon(Icons.copy, size: 16),
+                      label: const Text('一键复制', style: TextStyle(fontSize: 12)),
+                    ),
+                    TextButton.icon(
+                      onPressed: _showSaveDialog,
+                      icon: const Icon(Icons.save, size: 16),
+                      label: const Text('保存为投注', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
                 ),
             ],
           ),
