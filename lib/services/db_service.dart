@@ -100,6 +100,22 @@ class DatabaseHelper {
     }
     if (oldVersion < 3) {
       try {
+        await _createTableIfNotExists(db, 'settings', '''
+          CREATE TABLE settings (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            default_multiplier REAL DEFAULT 1.0,
+            default_lottery_type INTEGER DEFAULT 1,
+            last_backup_time TEXT DEFAULT ''
+          )
+        ''');
+        await _createTableIfNotExists(db, 'play_type_amounts', '''
+          CREATE TABLE play_type_amounts (
+            play_type TEXT PRIMARY KEY,
+            amount REAL NOT NULL,
+            win_amount REAL DEFAULT 0.0
+          )
+        ''');
+        await _ensureSettingsRow(db);
         await _createIndexIfNotExists(db, 'idx_bet_lottery_type', 'bet_records', 'lottery_type');
         await _createIndexIfNotExists(db, 'idx_bet_batch_id', 'bet_records', 'batch_id');
         await _createIndexIfNotExists(db, 'idx_bet_create_time', 'bet_records', 'create_time');
@@ -110,6 +126,28 @@ class DatabaseHelper {
       } catch (e) {
         print('Database upgrade v3 error: $e');
       }
+    }
+  }
+
+  Future<void> _createTableIfNotExists(Database db, String tableName, String createSql) async {
+    try {
+      final result = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name=?", [tableName]);
+      if (result.isEmpty) {
+        await db.execute(createSql);
+      }
+    } catch (e) {
+      print('Create table $tableName error: $e');
+    }
+  }
+
+  Future<void> _ensureSettingsRow(Database db) async {
+    try {
+      final result = await db.query('settings', where: 'id = 1');
+      if (result.isEmpty) {
+        await db.insert('settings', {'id': 1, 'default_multiplier': 1.0, 'default_lottery_type': 1, 'last_backup_time': ''}, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    } catch (e) {
+      print('Ensure settings row error: $e');
     }
   }
 

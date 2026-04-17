@@ -18,7 +18,6 @@ class AdvancedFilter extends StatefulWidget {
 }
 
 class _AdvancedFilterState extends State<AdvancedFilter> {
-  String _selectedLotteryType = 'all';
   String _selectedPlayType = 'all';
   String _timeRange = 'all';
   String _multiplierRange = 'all';
@@ -28,11 +27,6 @@ class _AdvancedFilterState extends State<AdvancedFilter> {
 
   void _applyFilter() {
     List<dynamic> filtered = widget.allBets;
-
-    if (_selectedLotteryType != 'all') {
-      final lotteryType = _selectedLotteryType == 'fc' ? 1 : 2;
-      filtered = filtered.where((b) => b.lotteryType == lotteryType).toList();
-    }
 
     if (_selectedPlayType != 'all') {
       filtered = filtered.where((b) => b.playType == _selectedPlayType).toList();
@@ -96,7 +90,6 @@ class _AdvancedFilterState extends State<AdvancedFilter> {
 
   void _resetFilters() {
     setState(() {
-      _selectedLotteryType = 'all';
       _selectedPlayType = 'all';
       _timeRange = 'all';
       _multiplierRange = 'all';
@@ -108,7 +101,6 @@ class _AdvancedFilterState extends State<AdvancedFilter> {
 
   int _getActiveFilterCount() {
     int count = 0;
-    if (_selectedLotteryType != 'all') count++;
     if (_selectedPlayType != 'all') count++;
     if (_timeRange != 'all') count++;
     if (_multiplierRange != 'all') count++;
@@ -189,21 +181,6 @@ class _AdvancedFilterState extends State<AdvancedFilter> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildFilterSection(
-                    title: '彩种过滤',
-                    icon: Icons.casino,
-                    child: Row(
-                      children: [
-                        _buildFilterChip('全部', 'all', _selectedLotteryType, (v) => setState(() => _selectedLotteryType = v)),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('福彩 3D', 'fc', _selectedLotteryType, (v) => setState(() => _selectedLotteryType = v)),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('排列三', 'pl', _selectedLotteryType, (v) => setState(() => _selectedLotteryType = v)),
-                      ],
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 12),
                   _buildFilterSection(
                     title: '玩法过滤',
                     icon: Icons.games,
@@ -359,21 +336,6 @@ class _AdvancedFilterState extends State<AdvancedFilter> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 children: [
-                  _buildQuickFilterChip('全部', 'all', _selectedLotteryType, (v) {
-                    setState(() => _selectedLotteryType = v);
-                    _applyFilter();
-                  }),
-                  const SizedBox(width: 8),
-                  _buildQuickFilterChip('福彩 3D', 'fc', _selectedLotteryType, (v) {
-                    setState(() => _selectedLotteryType = v);
-                    _applyFilter();
-                  }),
-                  const SizedBox(width: 8),
-                  _buildQuickFilterChip('排列三', 'pl', _selectedLotteryType, (v) {
-                    setState(() => _selectedLotteryType = v);
-                    _applyFilter();
-                  }),
-                  const SizedBox(width: 8),
                   _buildQuickFilterChip('今天', 'today', _timeRange, (v) {
                     setState(() => _timeRange = v);
                     _applyFilter();
@@ -465,9 +427,6 @@ class _AdvancedFilterState extends State<AdvancedFilter> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              value == 'all' ? Icons.list :
-              value == 'fc' ? Icons.casino :
-              value == 'pl' ? Icons.shuffle :
               value == 'today' ? Icons.today :
               Icons.date_range,
               size: 12,

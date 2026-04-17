@@ -132,7 +132,7 @@ class _EntryPageState extends State<EntryPage> {
   @override
   Widget build(BuildContext context) {
     final settings = Provider.of<SettingsProvider>(context);
-    if (!_syncedMultiplier) {
+    if (!_syncedMultiplier || _multiplierController.text.isEmpty) {
       _syncedMultiplier = true;
       _multiplierController.text = settings.defaultMultiplier.toString();
     }

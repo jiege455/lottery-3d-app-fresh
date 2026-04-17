@@ -154,7 +154,11 @@ class CheckService {
           if (parts.length == 2) {
             final dan = parts[0];
             final tuo = parts[1].split('').toSet();
-            isWin = nums.contains(dan) && tuo.every((d) => nums.contains(d));
+            final drawDigits = nums.split('');
+            if (drawDigits.contains(dan)) {
+              final otherDigits = drawDigits.where((d) => d != dan).toSet();
+              isWin = otherDigits.every((d) => tuo.contains(d));
+            }
             if (isWin) winType = '组六胆拖';
           }
         }
@@ -165,7 +169,11 @@ class CheckService {
           if (parts.length == 2) {
             final dan = parts[0];
             final tuo = parts[1].split('').toSet();
-            isWin = nums.contains(dan) && tuo.every((d) => nums.contains(d));
+            final drawDigits = nums.split('');
+            if (drawDigits.contains(dan)) {
+              final otherDigits = drawDigits.where((d) => d != dan).toSet();
+              isWin = otherDigits.every((d) => tuo.contains(d));
+            }
             if (isWin) winType = '组三胆拖';
           }
         }
@@ -179,27 +187,19 @@ class CheckService {
         if (isWin) winType = '豹子组选';
         break;
       case var pt when pt.startsWith('zq6_'):
-        // 组六直选：开奖必须为组六，且开奖号码的所有数字都在投注号码中
-        // 转圈玩法特点：投注的号码会生成所有排列组合
-        // 例如：投注 123，包含 123/132/213/231/312/321 所有顺序
         if (DrawRecord.getFormType(nums) == '组六') {
           final betDigits = bet.number.split('').toSet();
           final drawDigits = nums.split('').toSet();
-          // 只要开奖的 3 个数字都在投注数字中即可（顺序不限）
           isWin = drawDigits.every((d) => betDigits.contains(d));
-          if (isWin) winType = '转圈组六直选';
+          if (isWin) winType = '转圈组六';
         }
         break;
       case var pt when pt.startsWith('zq3_'):
-        // 组三直选：开奖必须为组三，且开奖号码的所有数字都在投注号码中
-        // 转圈玩法特点：投注的号码会生成所有组三排列
-        // 例如：投注 12，包含 112/121/211/221/212/122 所有顺序
         if (DrawRecord.getFormType(nums) == '组三') {
           final betDigits = bet.number.split('').toSet();
           final drawDigits = nums.split('').toSet();
-          // 只要开奖的数字都在投注数字中即可（顺序不限）
           isWin = drawDigits.every((d) => betDigits.contains(d));
-          if (isWin) winType = '转圈组三直选';
+          if (isWin) winType = '转圈组三';
         }
         break;
       case var pt when pt.startsWith('zbl_g6_'):
@@ -250,13 +250,19 @@ class CheckService {
 
     double winAmount = 0;
     if (isWin) {
+      // ⚠️ 以下中奖金额计算规则已确认，禁止修改！杰哥网络科技 2026-04-12
+      // 转圈类=固定1800元，沾边组六=固定300元，沾边组三=固定600元
+      // 其他玩法=投注金额×赔率
       if (customWinAmount > 0) {
         winAmount = bet.multiplier * customWinAmount;
       } else if (bet.playType.startsWith('zq6_') || bet.playType.startsWith('zq3_')) {
+        // 转圈类：固定奖金1800元，不随投注金额变化
         winAmount = bet.multiplier * 1800.0;
       } else if (bet.playType.startsWith('zbl_g6_')) {
+        // 沾边组六：固定奖金300元，不随投注金额变化
         winAmount = bet.multiplier * 300.0;
       } else if (bet.playType.startsWith('zbl_g3_')) {
+        // 沾边组三：固定奖金600元，不随投注金额变化
         winAmount = bet.multiplier * 600.0;
       } else {
         winAmount = bet.multiplier * bet.baseAmount * baseOdds;
@@ -287,7 +293,7 @@ class CheckService {
   }
 
   static bool _checkComplexPlay(BetRecord bet, String nums) {
-    if (bet.playType.startsWith('g3_') || bet.playType.startsWith('g6_')) {
+    if ((bet.playType.startsWith('g3_') || bet.playType.startsWith('g6_')) && !bet.playType.contains('dt')) {
       final digitSet = bet.number.split('').toSet();
       final numSet = nums.split('').toSet();
       if (bet.playType.startsWith('g3_')) {
@@ -303,8 +309,7 @@ class CheckService {
     if (bet.playType.startsWith('fs_')) {
       final betDigits = bet.number.split('').toSet();
       final numSet = nums.split('').toSet();
-      if (numSet.length == 3 && betDigits.containsAll(numSet)) return true;
-      if (numSet.length == 2 && betDigits.containsAll(numSet)) return true;
+      if (numSet.isNotEmpty && betDigits.containsAll(numSet)) return true;
       return false;
     }
     return false;

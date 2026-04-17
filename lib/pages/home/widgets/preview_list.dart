@@ -28,13 +28,13 @@ class _PreviewListState extends State<PreviewList> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(AppStyles.radiusSm), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4)]),
+      decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(AppStyles.radiusSm), boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 4)]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             Text('预览列表 (${widget.items.length}条)', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-            if (hiddenCount > 0) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: AppColors.warning.withOpacity(0.1), borderRadius: BorderRadius.circular(10)), child: Text('还有$hiddenCount条未显示', style: TextStyle(fontSize: 11, color: AppColors.warning))),
+            if (hiddenCount > 0) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: AppColors.warning.withAlpha(26), borderRadius: BorderRadius.circular(10)), child: Text('还有$hiddenCount条未显示', style: TextStyle(fontSize: 11, color: AppColors.warning))),
           ]),
           const SizedBox(height: 6),
           Text('点击条目可单独修改玩法或倍数', style: TextStyle(fontSize: 10, color: AppColors.textLight)),
@@ -60,9 +60,9 @@ class _PreviewListState extends State<PreviewList> {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryLight.withOpacity(0.2),
+                  color: AppColors.primaryLight.withAlpha(51),
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.1)),
+                  border: Border.all(color: AppColors.primary.withAlpha(26)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -95,9 +95,9 @@ class _PreviewListState extends State<PreviewList> {
         width: itemWidth,
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         decoration: BoxDecoration(
-          color: AppColors.primaryLight.withOpacity(0.3),
+          color: AppColors.primaryLight.withAlpha(77),
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: AppColors.border.withOpacity(0.3)),
+          border: Border.all(color: AppColors.border.withAlpha(77)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -261,7 +261,7 @@ class _PreviewListState extends State<PreviewList> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isSelected ? pt.color : AppColors.primaryLight.withOpacity(0.5),
+                      color: isSelected ? pt.color : AppColors.primaryLight.withAlpha(128),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: isSelected ? pt.color : Colors.transparent, width: 1),
                     ),
@@ -298,7 +298,7 @@ class _PreviewListState extends State<PreviewList> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppColors.primary : AppColors.primaryLight.withOpacity(0.5),
+                  color: isSelected ? AppColors.primary : AppColors.primaryLight.withAlpha(128),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: isSelected ? AppColors.primary : Colors.transparent, width: 1),
                 ),
@@ -359,9 +359,9 @@ class _PreviewListState extends State<PreviewList> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.primaryLight.withOpacity(0.3),
+        color: AppColors.primaryLight.withAlpha(77),
         borderRadius: BorderRadius.circular(AppStyles.radiusXs),
-        border: Border.all(color: AppColors.border.withOpacity(0.3)),
+        border: Border.all(color: AppColors.border.withAlpha(77)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -377,13 +377,13 @@ class _PreviewListState extends State<PreviewList> {
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
+                    decoration: BoxDecoration(color: color.withAlpha(38), borderRadius: BorderRadius.circular(8)),
                     child: Text(playTypeName, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
                   ),
                   const SizedBox(width: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(color: AppColors.warning.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
+                    decoration: BoxDecoration(color: AppColors.warning.withAlpha(38), borderRadius: BorderRadius.circular(8)),
                     child: Text('×$multiplier', style: const TextStyle(fontSize: 11, color: AppColors.warning, fontWeight: FontWeight.w600)),
                   ),
                 ],

@@ -276,54 +276,17 @@ class BatchParser {
     final digitsOnly = cleanLine.replaceAll(RegExp(r'[^0-9]'), '');
     if (digitsOnly.length < 2) return [];
 
-    final digits = digitsOnly.split('').toSet().toList();
-    if (digits.length < 2) return [];
+    final config = PlayTypes.getByCode(playTypeCode);
+    if (config == null) return [];
 
-    final isGroup3 = playTypeCode.startsWith('zq3_');
-    final items = <ParsedItem>[];
-    final effectiveMultiplier = mult ?? defaultMultiplier;
-    final singleConfig = PlayTypes.getByCode('single')!;
-
-    if (isGroup3) {
-      for (final a in digits) {
-        for (final b in digits) {
-          for (final c in digits) {
-            final num = '$a$b$c';
-            final sorted = [a, b, c]..sort();
-            final hasDup = sorted[0] == sorted[1] || sorted[1] == sorted[2];
-            final allSame = sorted[0] == sorted[2];
-            if (!hasDup || allSame) continue;
-            items.add(ParsedItem(
-              number: num,
-              playType: 'single',
-              playTypeName: '直选',
-              multiplier: effectiveMultiplier,
-              color: singleConfig.color,
-              baseAmount: singleConfig.baseAmount,
-            ));
-          }
-        }
-      }
-    } else {
-      for (final a in digits) {
-        for (final b in digits) {
-          if (b == a) continue;
-          for (final c in digits) {
-            if (c == a || c == b) continue;
-            items.add(ParsedItem(
-              number: '$a$b$c',
-              playType: 'single',
-              playTypeName: '直选',
-              multiplier: effectiveMultiplier,
-              color: singleConfig.color,
-              baseAmount: singleConfig.baseAmount,
-            ));
-          }
-        }
-      }
-    }
-
-    return items;
+    return [ParsedItem(
+      number: digitsOnly,
+      playType: config.code,
+      playTypeName: config.name,
+      multiplier: mult ?? defaultMultiplier,
+      color: config.color,
+      baseAmount: config.baseAmount,
+    )];
   }
 
   static bool _isZqPlayType(String? code) {
@@ -373,6 +336,20 @@ class BatchParser {
       final pc = PlayTypes.getByCode(detected);
       if (pc == null) return _splitAndCreate(line, PlayTypes.getByCode('single')!, defaultMultiplier);
       if (pc.isWholeLine) return [_createItem(line, pc, defaultMultiplier)];
+      if (detected == 'pos1') {
+        final posName = _extractPosNameFromLine(line);
+        final numStr = line.replaceAll(RegExp(r'[^\d]'), '').trim();
+        if (numStr.length == 1) {
+          return [ParsedItem(number: '$posName,$numStr', playType: pc.code, playTypeName: pc.name, multiplier: defaultMultiplier, color: pc.color, baseAmount: pc.baseAmount)];
+        }
+      }
+      if (detected == 'pos2') {
+        final posName = _extractPos2NameFromLine(line);
+        final numStr = line.replaceAll(RegExp(r'[^\d]'), '').trim();
+        if (numStr.length == 2) {
+          return [ParsedItem(number: '$posName,$numStr', playType: pc.code, playTypeName: pc.name, multiplier: defaultMultiplier, color: pc.color, baseAmount: pc.baseAmount)];
+        }
+      }
       return _splitAndCreate(line, pc, defaultMultiplier);
     }
     return _splitAndCreate(line, PlayTypes.getByCode('single')!, defaultMultiplier);
@@ -387,6 +364,7 @@ class BatchParser {
 
   static List<ParsedItem> _parseWithPrefix(String line, String playTypeCode, double defaultMultiplier) {
     final colonIndex = line.indexOf(RegExp(r'[:：]'));
+    final prefix = line.substring(0, colonIndex).trim();
     final content = line.substring(colonIndex + 1).trim();
 
     if (playTypeCode == 'group_auto') {
@@ -430,7 +408,64 @@ class BatchParser {
       if (content.trim().isEmpty) return [];
       return [_createItem(content, config, defaultMultiplier)];
     }
+
+    if (playTypeCode == 'pos1') {
+      final posName = _extractPosName(prefix);
+      final parts = _splitContent(content);
+      final items = <ParsedItem>[];
+      for (final part in parts) {
+        final trimmed = part.trim();
+        if (trimmed.isEmpty) continue;
+        final mult = _extractMultiplier(trimmed);
+        final numStr = trimmed.replaceAll(_multiplierRegex, '').trim();
+        if (numStr.isEmpty) continue;
+        items.add(ParsedItem(number: '$posName,$numStr', playType: config.code, playTypeName: config.name, multiplier: mult ?? defaultMultiplier, color: config.color, baseAmount: config.baseAmount));
+      }
+      return items;
+    }
+
+    if (playTypeCode == 'pos2') {
+      final posName = _extractPos2Name(prefix);
+      final parts = _splitContent(content);
+      final items = <ParsedItem>[];
+      for (final part in parts) {
+        final trimmed = part.trim();
+        if (trimmed.isEmpty) continue;
+        final mult = _extractMultiplier(trimmed);
+        final numStr = trimmed.replaceAll(_multiplierRegex, '').trim();
+        if (numStr.isEmpty) continue;
+        items.add(ParsedItem(number: '$posName,$numStr', playType: config.code, playTypeName: config.name, multiplier: mult ?? defaultMultiplier, color: config.color, baseAmount: config.baseAmount));
+      }
+      return items;
+    }
+
     return _splitAndCreate(content, config, defaultMultiplier);
+  }
+
+  static String _extractPosName(String prefix) {
+    if (prefix.contains('百')) return '百位';
+    if (prefix.contains('十')) return '十位';
+    if (prefix.contains('个')) return '个位';
+    return '百位';
+  }
+
+  static String _extractPos2Name(String prefix) {
+    if (prefix.contains('前两') || prefix.contains('首尾')) return '前两位';
+    if (prefix.contains('后两')) return '后两位';
+    return '前两位';
+  }
+
+  static String _extractPosNameFromLine(String line) {
+    if (line.contains('百')) return '百位';
+    if (line.contains('十')) return '十位';
+    if (line.contains('个')) return '个位';
+    return '百位';
+  }
+
+  static String _extractPos2NameFromLine(String line) {
+    if (line.contains('前两') || line.contains('首尾')) return '前两位';
+    if (line.contains('后两')) return '后两位';
+    return '前两位';
   }
 
   static String? _autoDetectPlayType(String line) {

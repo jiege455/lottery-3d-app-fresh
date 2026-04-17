@@ -1,0 +1,56 @@
+warning: in the working copy of 'lib/pages/home/widgets/bet_history_list.dart', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/lib/pages/home/widgets/bet_history_list.dart b/lib/pages/home/widgets/bet_history_list.dart[m
+[1mindex dff06f3..3fb6441 100644[m
+[1m--- a/lib/pages/home/widgets/bet_history_list.dart[m
+[1m+++ b/lib/pages/home/widgets/bet_history_list.dart[m
+[36m@@ -30,7 +30,17 @@[m [mclass _BetHistoryListState extends State<BetHistoryList> {[m
+   bool _isSelectMode = false;[m
+   final Set<String> _expandedBatches = {};[m
+   static const int _collapsedItemCount = 6;[m
+[31m-  List<BetRecord>? _lastBets;[m
+[32m+[m[32m  int? _lastLotteryType;[m
+[32m+[m
+[32m+[m[32m  @override[m
+[32m+[m[32m  void initState() {[m
+[32m+[m[32m    super.initState();[m
+[32m+[m[32m    WidgetsBinding.instance.addPostFrameCallback((_) {[m
+[32m+[m[32m      if (mounted) {[m
+[32m+[m[32m        _lastLotteryType = Provider.of<SettingsProvider>(context, listen: false).defaultLotteryType;[m
+[32m+[m[32m      }[m
+[32m+[m[32m    });[m
+[32m+[m[32m  }[m
+ [m
+   @override[m
+   void dispose() {[m
+[36m@@ -38,16 +48,13 @@[m [mclass _BetHistoryListState extends State<BetHistoryList> {[m
+     super.dispose();[m
+   }[m
+ [m
+[31m-  void _checkDataReset(List<BetRecord> currentBets) {[m
+[31m-    if (_lastBets != null && _lastBets!.isNotEmpty && currentBets.isNotEmpty) {[m
+[31m-      final lastFirst = _lastBets!.first.batchId;[m
+[31m-      final currentFirst = currentBets.first.batchId;[m
+[31m-      if (lastFirst != currentFirst) {[m
+[31m-        _displayBatchCount = 10;[m
+[31m-        _expandedBatches.clear();[m
+[31m-      }[m
+[32m+[m[32m  void _checkLotteryTypeReset() {[m
+[32m+[m[32m    final currentType = Provider.of<SettingsProvider>(context, listen: false).defaultLotteryType;[m
+[32m+[m[32m    if (_lastLotteryType != null && _lastLotteryType != currentType) {[m
+[32m+[m[32m      _displayBatchCount = 10;[m
+[32m+[m[32m      _expandedBatches.clear();[m
+     }[m
+[31m-    _lastBets = currentBets;[m
+[32m+[m[32m    _lastLotteryType = currentType;[m
+   }[m
+ [m
+   List<BetRecord> _getDisplayBets() {[m
+[36m@@ -218,7 +225,7 @@[m [mclass _BetHistoryListState extends State<BetHistoryList> {[m
+   @override[m
+   Widget build(BuildContext context) {[m
+     final displayBets = _getDisplayBets();[m
+[31m-    _checkDataReset(displayBets);[m
+[32m+[m[32m    _checkLotteryTypeReset();[m
+     final groupedBets = _getGroupedBets(displayBets);[m
+     final batchIds = groupedBets.keys.toList()..sort((a, b) {[m
+       final aBets = groupedBets[a]!;[m

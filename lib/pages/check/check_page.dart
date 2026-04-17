@@ -24,7 +24,9 @@ class _CheckPageState extends State<CheckPage> {
   bool _betsLoaded = false;
   bool _syncing = false;
   bool _loseExpanded = false;
+  bool _drawsExpanded = false;
   static const int _collapsedLoseCount = 10;
+  static const int _latestDrawsCount = 3;
   List<DrawRecord> _recentDraws = [];
   int _selectedLotteryType = 1;
 
@@ -46,7 +48,7 @@ class _CheckPageState extends State<CheckPage> {
 
   Future<void> _loadRecentDraws() async {
     try {
-      final draws = await DatabaseHelper.instance.getAllDraws(lotteryType: _selectedLotteryType, limit: 10);
+      final draws = await DatabaseHelper.instance.getAllDraws(lotteryType: _selectedLotteryType, limit: 20);
       if (mounted) setState(() => _recentDraws = draws);
     } catch (e) {
       print('CheckPage._loadRecentDraws error: $e');
@@ -60,13 +62,13 @@ class _CheckPageState extends State<CheckPage> {
       int totalCount = 0;
       int failCount = 0;
       try {
-        totalCount += await LotteryApiService.syncDraws(lotteryType: 1, count: 7);
+        totalCount += await LotteryApiService.syncDraws(lotteryType: 1, count: 20);
       } catch (e) {
         print('同步福彩3D失败: $e');
         failCount++;
       }
       try {
-        totalCount += await LotteryApiService.syncDraws(lotteryType: 2, count: 7);
+        totalCount += await LotteryApiService.syncDraws(lotteryType: 2, count: 20);
       } catch (e) {
         print('同步排列三失败: $e');
         failCount++;
@@ -196,6 +198,7 @@ class _CheckPageState extends State<CheckPage> {
     setState(() {
       _selectedLotteryType = type;
       _results = [];
+      _drawsExpanded = false;
     });
     _loadRecentDraws();
   }
@@ -246,26 +249,106 @@ class _CheckPageState extends State<CheckPage> {
         ]),
         if (_recentDraws.isNotEmpty) ...[
           const SizedBox(height: 10),
-          Text('最近开奖（点击自动填入）', style: TextStyle(fontSize: 11, color: AppColors.textLight)),
+          Text('最新开奖（点击自动填入）', style: TextStyle(fontSize: 11, color: AppColors.textLight)),
           const SizedBox(height: 6),
-          Wrap(spacing: 6, runSpacing: 6, children: _recentDraws.map((d) => GestureDetector(
-            onTap: () => _selectDraw(d),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-              decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(6), border: Border.all(color: AppColors.primary.withAlpha(51))),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Text(d.issue, style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
-                const SizedBox(width: 4),
-                Text(d.numbers, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary, fontFamily: 'monospace')),
-              ]),
+          ..._buildLatestDraws(),
+          if (_recentDraws.length > _latestDrawsCount) ...[
+            const SizedBox(height: 6),
+            GestureDetector(
+              onTap: () => setState(() => _drawsExpanded = !_drawsExpanded),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 7),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight.withAlpha(51),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AppColors.primary.withAlpha(26)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _drawsExpanded ? '收起历史开奖' : '查看历史开奖 (${_recentDraws.length - _latestDrawsCount}条)',
+                      style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      _drawsExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
+                  ],
+                ),
+              ),
             ),
-          )).toList()),
+            if (_drawsExpanded) ...[
+              const SizedBox(height: 6),
+              Wrap(spacing: 6, runSpacing: 6, children: _recentDraws.sublist(_latestDrawsCount).map((d) => GestureDetector(
+                onTap: () => _selectDraw(d),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(6), border: Border.all(color: AppColors.primary.withAlpha(51))),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text(d.issue, style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                    const SizedBox(width: 4),
+                    Text(d.numbers, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary, fontFamily: 'monospace')),
+                  ]),
+                ),
+              )).toList()),
+            ],
+          ],
         ] else ...[
           const SizedBox(height: 6),
           Text('暂无开奖数据，点击同步获取', style: TextStyle(fontSize: 11, color: AppColors.textLight)),
         ],
       ]),
     );
+  }
+
+  List<Widget> _buildLatestDraws() {
+    final latestDraws = _recentDraws.take(_latestDrawsCount).toList();
+    return latestDraws.asMap().entries.map((entry) {
+      final index = entry.key;
+      final d = entry.value;
+      final isFirst = index == 0;
+      return GestureDetector(
+        onTap: () => _selectDraw(d),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: isFirst ? AppColors.primary.withAlpha(15) : AppColors.primaryLight,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: isFirst ? AppColors.primary.withAlpha(76) : AppColors.primary.withAlpha(26)),
+          ),
+          child: Row(children: [
+            if (isFirst) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(4)),
+                child: const Text('最新', style: TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w600)),
+              ),
+              const SizedBox(width: 8),
+            ] else ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: AppColors.textLight.withAlpha(30), borderRadius: BorderRadius.circular(4)),
+                child: Text('第${index + 1}期', style: TextStyle(fontSize: 9, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+              ),
+              const SizedBox(width: 8),
+            ],
+            Expanded(child: Text(d.issue, style: TextStyle(fontSize: 12, color: AppColors.textSecondary))),
+            Text(d.numbers.split('').join(' '), style: TextStyle(
+              fontSize: isFirst ? 22 : 18,
+              fontWeight: FontWeight.bold,
+              color: isFirst ? AppColors.primary : AppColors.primary.withAlpha(180),
+              fontFamily: 'monospace',
+              letterSpacing: isFirst ? 4 : 2,
+            )),
+          ]),
+        ),
+      );
+    }).toList();
   }
 
   Widget _buildInputCard() {

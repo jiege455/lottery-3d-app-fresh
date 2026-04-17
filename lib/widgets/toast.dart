@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 class ToastUtil {
   static OverlayEntry? _currentToast;
 
-  static void show(BuildContext context, String message, {Color? color}) {
+  static void show(BuildContext context, String message, {Color? color, IconData? icon}) {
     _currentToast?.remove();
     _currentToast = null;
 
     try {
       final overlay = Overlay.of(context);
-      _currentToast = OverlayEntry(builder: (context) => _ToastWidget(message: message, color: color));
+      _currentToast = OverlayEntry(builder: (context) => _ToastWidget(message: message, color: color, icon: icon));
       overlay.insert(_currentToast!);
       Future.delayed(const Duration(seconds: 2), () {
         _currentToast?.remove();
@@ -34,15 +34,16 @@ class ToastUtil {
     } catch (_) {}
   }
 
-  static void success(BuildContext context, String message) => show(context, message, color: const Color(0xFF059669));
-  static void error(BuildContext context, String message) => show(context, message, color: const Color(0xFFDC2626));
-  static void warning(BuildContext context, String message) => show(context, message, color: const Color(0xFFF59E0B));
+  static void success(BuildContext context, String message) => show(context, message, color: const Color(0xFF059669), icon: Icons.check_circle);
+  static void error(BuildContext context, String message) => show(context, message, color: const Color(0xFFDC2626), icon: Icons.error);
+  static void warning(BuildContext context, String message) => show(context, message, color: const Color(0xFFF59E0B), icon: Icons.warning);
 }
 
 class _ToastWidget extends StatelessWidget {
   final String message;
   final Color? color;
-  const _ToastWidget({required this.message, this.color});
+  final IconData? icon;
+  const _ToastWidget({required this.message, this.color, this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +63,7 @@ class _ToastWidget extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.check_circle, size: 18, color: Colors.white.withAlpha(230)),
+              Icon(icon ?? Icons.info, size: 18, color: Colors.white.withAlpha(230)),
               const SizedBox(width: 8),
               Flexible(child: Text(message, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500))),
             ],
