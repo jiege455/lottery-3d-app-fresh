@@ -46,11 +46,15 @@ class BatchParser {
 
   static final RegExp _posCompositeRegex = RegExp(r'百位?[\s：:，,、]*([\d，,、]+).*?十位?[\s：:，,、]*([\d，,、]+).*?个位?[\s：:，,、]*([\d，,、]+)', dotAll: true);
 
-  static final RegExp _numGroupSuffixRegex = RegExp(r'^(\d{2,9})\s*组([六三63])?\s*([*×xX]?\d*\.?\d*)?$');
+  static final RegExp _numGroupSuffixRegex = RegExp(r'^(\d{2,9})\s*组([六三63])?\s*([*×xX]?\d*\.?\d*)\s*(米|元)?$');
 
   static final RegExp _singleGroupSuffixRegex = RegExp(r'([一二两三四五六七八九十\d]*)[单直]([一二两三四五六七八九十\d]*)组\s*$');
 
   static final RegExp _singleGroupGeSuffixRegex = RegExp(r'直组各([一二两三四五六七八九十\d]*)倍?\s*$');
+
+  static final RegExp _groupGeSuffixRegex = RegExp(r'各([一二两三四五六七八九十\d]*)倍?\s*$');
+
+  static final RegExp _groupEntryRegex = RegExp(r'(\d{2,9})\s*组([六三63])');
 
   static int? _parseChineseNum(String s) {
     if (s.isEmpty) return 1;
@@ -343,6 +347,89 @@ class BatchParser {
     return results;
   }
 
+  static List<ParsedItem>? _tryParseGroupGeLines(String input, {String? forcePlayType, double defaultMultiplier = 1.0}) {
+    final lines = input.split(RegExp(r'[\n\r]')).where((l) => l.trim().isNotEmpty).toList();
+    final results = <ParsedItem>[];
+    final normalLines = <String>[];
+    var hasGroupGe = false;
+
+    for (final line in lines) {
+      final trimmed = line.trim();
+      final geMatch = _groupGeSuffixRegex.firstMatch(trimmed);
+      if (geMatch == null) {
+        normalLines.add(trimmed);
+        continue;
+      }
+
+      final geMult = (_parseChineseNum(geMatch.group(1) ?? '') ?? 1).toDouble();
+      final beforeGe = trimmed.substring(0, geMatch.start).trim();
+
+      final entries = <MapEntry<String, String>>[];
+      for (final m in _groupEntryRegex.allMatches(beforeGe)) {
+        entries.add(MapEntry(m.group(1)!, m.group(2)!));
+      }
+
+      if (entries.isEmpty) {
+        normalLines.add(trimmed);
+        continue;
+      }
+
+      hasGroupGe = true;
+      for (final entry in entries) {
+        final digits = entry.key;
+        final typeHint = entry.value;
+
+        final uniqueDigits = digits.split('').toSet().toList()..sort();
+        final count = uniqueDigits.length;
+        if (count < 2 || count > 9) continue;
+
+        String playTypeCode;
+        if (typeHint == '六' || typeHint == '6') {
+          if (count < 4) continue;
+          playTypeCode = 'g6_$count';
+        } else if (typeHint == '三' || typeHint == '3') {
+          playTypeCode = 'g3_$count';
+        } else {
+          if (count <= 3) {
+            playTypeCode = 'g3_$count';
+          } else {
+            playTypeCode = 'g6_$count';
+          }
+        }
+
+        final config = PlayTypes.getByCode(playTypeCode);
+        if (config == null) continue;
+
+        results.add(ParsedItem(
+          number: uniqueDigits.join(),
+          playType: config.code,
+          playTypeName: config.name,
+          multiplier: geMult,
+          color: config.color,
+          baseAmount: config.baseAmount,
+        ));
+      }
+    }
+
+    if (!hasGroupGe) return null;
+
+    if (normalLines.isNotEmpty) {
+      final singleGroupResult = _tryParseSingleGroupLines(normalLines.join('\n'), forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
+      if (singleGroupResult != null) {
+        results.addAll(singleGroupResult);
+      } else {
+        final preprocessed = _preprocessInput(normalLines.join('\n'));
+        final normalLinesList = preprocessed.split('\n').where((l) => l.trim().isNotEmpty).toList();
+        for (final line in normalLinesList) {
+          final lineItems = _parseLine(line.trim(), forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
+          results.addAll(lineItems);
+        }
+      }
+    }
+
+    return results;
+  }
+
   static bool _isMultiLinePosComposite(String input) {
     final joined = input.replaceAll('\n', ' ').replaceAll('\r', ' ').trim();
     if (!_isPosCompositeFormat(joined)) return false;
@@ -421,11 +508,23 @@ class BatchParser {
     final digits = match.group(1)!;
     final typeHint = match.group(2);
     final multStr = match.group(3);
+    final moneySuffix = match.group(4);
 
     double? mult;
     if (multStr != null && multStr.isNotEmpty) {
       final cleaned = multStr.replaceFirst(RegExp(r'^[*×xX]'), '');
-      if (cleaned.isNotEmpty) mult = double.tryParse(cleaned);
+      if (cleaned.isNotEmpty) {
+        final parsed = double.tryParse(cleaned);
+        if (parsed != null) {
+          final hasExplicitMult = multStr.startsWith(RegExp(r'[*×xX]'));
+          final isMoney = moneySuffix != null || (!hasExplicitMult && parsed >= 10);
+          if (isMoney) {
+            mult = parsed / 10;
+          } else {
+            mult = parsed;
+          }
+        }
+      }
     }
     final effectiveMultiplier = mult ?? defaultMultiplier;
 
@@ -492,6 +591,9 @@ class BatchParser {
 
     final singleGroupResult = _tryParseSingleGroupLines(input, forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
     if (singleGroupResult != null) return singleGroupResult;
+
+    final groupGeResult = _tryParseGroupGeLines(input, forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
+    if (groupGeResult != null) return groupGeResult;
 
     final preprocessed = _preprocessInput(input);
     if (preprocessed.trim().isEmpty) return [];
