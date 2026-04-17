@@ -33,16 +33,8 @@ class _PlayTypeAmountSettingsPageState extends State<PlayTypeAmountSettingsPage>
       final amount = settings.getPlayTypeAmount(pt.code);
       var winAmount = settings.getPlayTypeWinAmount(pt.code);
       if (winAmount <= 0) {
-        if (pt.code.startsWith('zq6_') || pt.code.startsWith('zq3_')) {
-          winAmount = 1800.0;
-        } else if (pt.code.startsWith('zbl_g6_')) {
-          winAmount = 300.0;
-        } else if (pt.code.startsWith('zbl_g3_')) {
-          winAmount = 600.0;
-        } else {
-          final defaultOdds = CheckService.oddsMap[pt.code] ?? 0.0;
-          winAmount = amount * defaultOdds;
-        }
+        final defaultOdds = CheckService.oddsMap[pt.code] ?? 0.0;
+        winAmount = amount * defaultOdds;
       }
       _amountControllers[pt.code]!.text = amount.toStringAsFixed(1);
       _winAmountControllers[pt.code]!.text = winAmount.toStringAsFixed(1);
