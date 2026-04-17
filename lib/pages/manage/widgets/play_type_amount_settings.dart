@@ -17,6 +17,12 @@ class _PlayTypeAmountSettingsPageState extends State<PlayTypeAmountSettingsPage>
   final Map<String, TextEditingController> _amountControllers = {};
   final Map<String, TextEditingController> _winAmountControllers = {};
 
+  static String _fmt(double v) {
+    final rounded = v.roundToDouble();
+    if (rounded == rounded.truncateToDouble()) return rounded.toInt().toString();
+    return rounded.toStringAsFixed(1);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -36,8 +42,8 @@ class _PlayTypeAmountSettingsPageState extends State<PlayTypeAmountSettingsPage>
         final defaultOdds = CheckService.oddsMap[pt.code] ?? 0.0;
         winAmount = (amount * defaultOdds).roundToDouble();
       }
-      _amountControllers[pt.code]!.text = amount.toStringAsFixed(1);
-      _winAmountControllers[pt.code]!.text = winAmount.toStringAsFixed(1);
+      _amountControllers[pt.code]!.text = _fmt(amount);
+      _winAmountControllers[pt.code]!.text = _fmt(winAmount);
     }
   }
 
@@ -139,7 +145,7 @@ class _PlayTypeAmountSettingsPageState extends State<PlayTypeAmountSettingsPage>
           flex: 2,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(name, style: const TextStyle(fontWeight: FontWeight.w500)),
-            Text('默认投注 ${defaultAmount.toStringAsFixed(1)} 元 | 默认中奖 ${defaultWin.toStringAsFixed(1)} 元', style: TextStyle(fontSize: 11, color: AppColors.textLight)),
+            Text('默认投注 ${_fmt(defaultAmount)} 元 | 默认中奖 ${_fmt(defaultWin)} 元', style: TextStyle(fontSize: 11, color: AppColors.textLight)),
           ]),
         ),
         Column(children: [
