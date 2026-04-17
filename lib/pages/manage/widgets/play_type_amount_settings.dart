@@ -34,7 +34,7 @@ class _PlayTypeAmountSettingsPageState extends State<PlayTypeAmountSettingsPage>
       var winAmount = settings.getPlayTypeWinAmount(pt.code);
       if (winAmount <= 0) {
         final defaultOdds = CheckService.oddsMap[pt.code] ?? 0.0;
-        winAmount = amount * defaultOdds;
+        winAmount = (amount * defaultOdds).roundToDouble();
       }
       _amountControllers[pt.code]!.text = amount.toStringAsFixed(1);
       _winAmountControllers[pt.code]!.text = winAmount.toStringAsFixed(1);
@@ -130,7 +130,7 @@ class _PlayTypeAmountSettingsPageState extends State<PlayTypeAmountSettingsPage>
 
   Widget _buildPlayTypeItem(String code, String name, double defaultAmount, SettingsProvider settings, bool isLast) {
     final defaultOdds = CheckService.oddsMap[code] ?? 0.0;
-    final defaultWin = defaultAmount * defaultOdds;
+    final defaultWin = (defaultAmount * defaultOdds).roundToDouble();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(border: isLast ? null : Border(bottom: BorderSide(color: AppColors.border.withAlpha(77)))),

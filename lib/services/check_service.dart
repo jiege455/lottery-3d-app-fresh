@@ -45,13 +45,13 @@ class CheckService {
     'g3_dt6': 25.0, 'g3_dt7': 20.0, 'g3_dt8': 18.5, 'g3_dt9': 16.0,
     'baozi_single': 170.0, 'baozi_all': 85.0,
     'zq6_3': 150.0, 'zq6_4': 37.5, 'zq6_5': 15.0, 'zq6_6': 7.5,
-    'zq6_7': 4.29, 'zq6_8': 2.68, 'zq6_9': 1.79, 'zq6_all': 1.25,
+    'zq6_7': 4.285714, 'zq6_8': 2.678571, 'zq6_9': 1.785714, 'zq6_all': 1.25,
     'zq3_2': 150.0, 'zq3_3': 50.0, 'zq3_4': 25.0, 'zq3_5': 15.0,
-    'zq3_6': 10.0, 'zq3_7': 7.14, 'zq3_8': 5.36, 'zq3_9': 4.17, 'zq3_all': 3.33,
-    'zbl_g6_1': 4.17, 'zbl_g6_2': 2.34, 'zbl_g6_3': 1.76, 'zbl_g6_4': 1.5,
-    'zbl_g6_5': 1.36, 'zbl_g6_6': 1.29, 'zbl_g6_7': 1.26,
-    'zbl_g3_1': 16.67, 'zbl_g3_2': 8.82, 'zbl_g3_3': 6.25, 'zbl_g3_4': 5.0,
-    'zbl_g3_5': 4.29, 'zbl_g3_6': 3.85, 'zbl_g3_7': 3.57,
+    'zq3_6': 10.0, 'zq3_7': 7.142857, 'zq3_8': 5.357143, 'zq3_9': 4.166667, 'zq3_all': 3.333333,
+    'zbl_g6_1': 4.166667, 'zbl_g6_2': 2.34375, 'zbl_g6_3': 1.764706, 'zbl_g6_4': 1.5,
+    'zbl_g6_5': 1.363636, 'zbl_g6_6': 1.293103, 'zbl_g6_7': 1.260504,
+    'zbl_g3_1': 16.666667, 'zbl_g3_2': 8.823529, 'zbl_g3_3': 6.25, 'zbl_g3_4': 5.0,
+    'zbl_g3_5': 4.285714, 'zbl_g3_6': 3.846154, 'zbl_g3_7': 3.571429,
     'fs_3': 33.4, 'fs_4': 14.1, 'fs_5': 7.2, 'fs_6': 4.2,
     'fs_7': 2.6, 'fs_8': 1.7, 'fs_9': 1.23, 'fs_all': 1.0,
     'span0': 80.0, 'span1': 16.5, 'span2': 9.2, 'span3': 7.0,
@@ -252,11 +252,11 @@ class CheckService {
     double winAmount = 0;
     if (isWin) {
       // ⚠️ 以下中奖金额计算规则已确认，禁止修改！杰哥网络科技 2026-04-12
-      // 所有玩法统一：中奖金额 = 倍数 × 投注金额 × 赔率
+      // 所有玩法统一：中奖金额 = 倍数 × 投注金额 × 赔率（四舍五入取整）
       if (customWinAmount > 0) {
         winAmount = bet.multiplier * customWinAmount;
       } else {
-        winAmount = bet.multiplier * bet.baseAmount * baseOdds;
+        winAmount = (bet.multiplier * bet.baseAmount * baseOdds).roundToDouble();
       }
     }
 
