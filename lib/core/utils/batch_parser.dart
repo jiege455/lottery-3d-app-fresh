@@ -60,6 +60,10 @@ class BatchParser {
 
   static final RegExp _shuangFeiRegex = RegExp(r'^双飞\s*(\d{2})\s*([*×xX]?\d*\.?\d*)\s*(米|元)?$');
 
+  static final RegExp _zhuanQuanRegex = RegExp(r'^(\d{2,9})\s*转圈组([六三63])\s*([*×xX]?\d*\.?\d*)\s*(米|元)?$');
+
+  static final RegExp _zhanBianRegex = RegExp(r'^(\d{1,7})\s*沾边组([六三63])\s*([*×xX]?\d*\.?\d*)\s*(米|元)?$');
+
   static int? _parseChineseNum(String s) {
     if (s.isEmpty) return 1;
     const cnMap = {'一': 1, '二': 2, '两': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10};
@@ -599,6 +603,149 @@ class BatchParser {
     return results;
   }
 
+  static double _calcMoneyMultiplier(String multStr, String? moneySuffix, double baseAmount) {
+    if (multStr.isEmpty) return 1.0;
+    final cleaned = multStr.replaceFirst(RegExp(r'^[*×xX]'), '');
+    if (cleaned.isEmpty) return 1.0;
+    final parsed = double.tryParse(cleaned);
+    if (parsed == null) return 1.0;
+    final hasExplicitMult = multStr.startsWith(RegExp(r'[*×xX]'));
+    if (hasExplicitMult) return parsed;
+    if (moneySuffix != null) return parsed / baseAmount;
+    if (parsed >= baseAmount) return parsed / baseAmount;
+    return parsed;
+  }
+
+  static List<ParsedItem>? _tryParseZhuanQuan(String input, {String? forcePlayType, double defaultMultiplier = 1.0}) {
+    final lines = input.split(RegExp(r'[\n\r]')).where((l) => l.trim().isNotEmpty).toList();
+    final results = <ParsedItem>[];
+    final normalLines = <String>[];
+    var hasZq = false;
+
+    for (final line in lines) {
+      final trimmed = line.trim();
+      final match = _zhuanQuanRegex.firstMatch(trimmed);
+      if (match == null) {
+        normalLines.add(trimmed);
+        continue;
+      }
+
+      final digits = match.group(1)!.split('').toSet().toList()..sort();
+      final typeHint = match.group(2)!;
+      final multStr = match.group(3) ?? '';
+      final moneySuffix = match.group(4);
+
+      final count = digits.length;
+      if (count < 2 || count > 9) {
+        normalLines.add(trimmed);
+        continue;
+      }
+
+      String playTypeCode;
+      if (typeHint == '六' || typeHint == '6') {
+        playTypeCode = 'zq6_$count';
+      } else {
+        playTypeCode = 'zq3_$count';
+      }
+
+      final config = PlayTypes.getByCode(playTypeCode);
+      if (config == null) {
+        normalLines.add(trimmed);
+        continue;
+      }
+
+      final mult = _calcMoneyMultiplier(multStr, moneySuffix, config.baseAmount);
+
+      hasZq = true;
+      results.add(ParsedItem(
+        number: digits.join(),
+        playType: config.code,
+        playTypeName: config.name,
+        multiplier: mult,
+        color: config.color,
+        baseAmount: config.baseAmount,
+      ));
+    }
+
+    if (!hasZq) return null;
+
+    if (normalLines.isNotEmpty) {
+      final preprocessed = _preprocessInput(normalLines.join('\n'));
+      final normalLinesList = preprocessed.split('\n').where((l) => l.trim().isNotEmpty).toList();
+      for (final line in normalLinesList) {
+        final lineItems = _parseLine(line.trim(), forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
+        results.addAll(lineItems);
+      }
+    }
+
+    return results;
+  }
+
+  static List<ParsedItem>? _tryParseZhanBian(String input, {String? forcePlayType, double defaultMultiplier = 1.0}) {
+    final lines = input.split(RegExp(r'[\n\r]')).where((l) => l.trim().isNotEmpty).toList();
+    final results = <ParsedItem>[];
+    final normalLines = <String>[];
+    var hasZb = false;
+
+    for (final line in lines) {
+      final trimmed = line.trim();
+      final match = _zhanBianRegex.firstMatch(trimmed);
+      if (match == null) {
+        normalLines.add(trimmed);
+        continue;
+      }
+
+      final digits = match.group(1)!.split('').toSet().toList()..sort();
+      final typeHint = match.group(2)!;
+      final multStr = match.group(3) ?? '';
+      final moneySuffix = match.group(4);
+
+      final count = digits.length;
+      if (count < 1 || count > 7) {
+        normalLines.add(trimmed);
+        continue;
+      }
+
+      String playTypeCode;
+      if (typeHint == '六' || typeHint == '6') {
+        playTypeCode = 'zbl_g6_$count';
+      } else {
+        playTypeCode = 'zbl_g3_$count';
+      }
+
+      final config = PlayTypes.getByCode(playTypeCode);
+      if (config == null) {
+        normalLines.add(trimmed);
+        continue;
+      }
+
+      final mult = _calcMoneyMultiplier(multStr, moneySuffix, config.baseAmount);
+
+      hasZb = true;
+      results.add(ParsedItem(
+        number: digits.join(),
+        playType: config.code,
+        playTypeName: config.name,
+        multiplier: mult,
+        color: config.color,
+        baseAmount: config.baseAmount,
+      ));
+    }
+
+    if (!hasZb) return null;
+
+    if (normalLines.isNotEmpty) {
+      final preprocessed = _preprocessInput(normalLines.join('\n'));
+      final normalLinesList = preprocessed.split('\n').where((l) => l.trim().isNotEmpty).toList();
+      for (final line in normalLinesList) {
+        final lineItems = _parseLine(line.trim(), forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
+        results.addAll(lineItems);
+      }
+    }
+
+    return results;
+  }
+
   static bool _isMultiLinePosComposite(String input) {
     final joined = input.replaceAll('\n', ' ').replaceAll('\r', ' ').trim();
     if (!_isPosCompositeFormat(joined)) return false;
@@ -771,6 +918,12 @@ class BatchParser {
 
     final shuangFeiResult = _tryParseShuangFei(input, forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
     if (shuangFeiResult != null) return shuangFeiResult;
+
+    final zhuanQuanResult = _tryParseZhuanQuan(input, forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
+    if (zhuanQuanResult != null) return zhuanQuanResult;
+
+    final zhanBianResult = _tryParseZhanBian(input, forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
+    if (zhanBianResult != null) return zhanBianResult;
 
     final danTuoResult = _tryParseDanTuo(input, forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
     if (danTuoResult != null) return danTuoResult;
