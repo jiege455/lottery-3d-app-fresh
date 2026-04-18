@@ -56,6 +56,8 @@ class BatchParser {
 
   static final RegExp _groupEntryRegex = RegExp(r'(\d{2,9})\s*组([六三63])');
 
+  static final RegExp _danTuoRegex = RegExp(r'^(\d)\s*拖\s*(\d{2,9})\s*组([六三63])\s*([*×xX]?\d*\.?\d*)\s*(米|元)?$');
+
   static int? _parseChineseNum(String s) {
     if (s.isEmpty) return 1;
     const cnMap = {'一': 1, '二': 2, '两': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10};
@@ -430,6 +432,96 @@ class BatchParser {
     return results;
   }
 
+  static List<ParsedItem>? _tryParseDanTuo(String input, {String? forcePlayType, double defaultMultiplier = 1.0}) {
+    final lines = input.split(RegExp(r'[\n\r]')).where((l) => l.trim().isNotEmpty).toList();
+    final results = <ParsedItem>[];
+    final normalLines = <String>[];
+    var hasDanTuo = false;
+
+    for (final line in lines) {
+      final trimmed = line.trim();
+      final match = _danTuoRegex.firstMatch(trimmed);
+      if (match == null) {
+        normalLines.add(trimmed);
+        continue;
+      }
+
+      final danDigit = match.group(1)!;
+      final tuoDigits = match.group(2)!.split('').toSet().toList()..sort();
+      final typeHint = match.group(3)!;
+      final multStr = match.group(4);
+      final moneySuffix = match.group(5);
+
+      final tuoCount = tuoDigits.length;
+      if (tuoCount < 2 || tuoCount > 9) {
+        normalLines.add(trimmed);
+        continue;
+      }
+
+      double? mult;
+      if (multStr != null && multStr.isNotEmpty) {
+        final cleaned = multStr.replaceFirst(RegExp(r'^[*×xX]'), '');
+        if (cleaned.isNotEmpty) {
+          final parsed = double.tryParse(cleaned);
+          if (parsed != null) {
+            final hasExplicitMult = multStr.startsWith(RegExp(r'[*×xX]'));
+            final isMoney = moneySuffix != null || (!hasExplicitMult && parsed >= 10);
+            mult = isMoney ? parsed / 10 : parsed;
+          }
+        }
+      }
+      final effectiveMult = mult ?? defaultMultiplier;
+
+      String playTypeCode;
+      if (typeHint == '六' || typeHint == '6') {
+        if (tuoCount < 2) continue;
+        playTypeCode = 'g6_dt$tuoCount';
+      } else {
+        playTypeCode = 'g3_dt$tuoCount';
+      }
+
+      final config = PlayTypes.getByCode(playTypeCode);
+      if (config == null) {
+        normalLines.add(trimmed);
+        continue;
+      }
+
+      hasDanTuo = true;
+      final numberStr = '$danDigit:${tuoDigits.join()}';
+      results.add(ParsedItem(
+        number: numberStr,
+        playType: config.code,
+        playTypeName: config.name,
+        multiplier: effectiveMult,
+        color: config.color,
+        baseAmount: config.baseAmount,
+      ));
+    }
+
+    if (!hasDanTuo) return null;
+
+    if (normalLines.isNotEmpty) {
+      final singleGroupResult = _tryParseSingleGroupLines(normalLines.join('\n'), forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
+      if (singleGroupResult != null) {
+        results.addAll(singleGroupResult);
+      } else {
+        final groupGeResult = _tryParseGroupGeLines(normalLines.join('\n'), forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
+        if (groupGeResult != null) {
+          results.addAll(groupGeResult);
+        } else {
+          final preprocessed = _preprocessInput(normalLines.join('\n'));
+          final normalLinesList = preprocessed.split('\n').where((l) => l.trim().isNotEmpty).toList();
+          for (final line in normalLinesList) {
+            final lineItems = _parseLine(line.trim(), forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
+            results.addAll(lineItems);
+          }
+        }
+      }
+    }
+
+    return results;
+  }
+
   static bool _isMultiLinePosComposite(String input) {
     final joined = input.replaceAll('\n', ' ').replaceAll('\r', ' ').trim();
     if (!_isPosCompositeFormat(joined)) return false;
@@ -599,6 +691,9 @@ class BatchParser {
 
     final multiLinePosResult = _tryParseMultiLinePosition(input, forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
     if (multiLinePosResult != null) return multiLinePosResult;
+
+    final danTuoResult = _tryParseDanTuo(input, forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
+    if (danTuoResult != null) return danTuoResult;
 
     final singleGroupResult = _tryParseSingleGroupLines(input, forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
     if (singleGroupResult != null) return singleGroupResult;
