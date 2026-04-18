@@ -244,6 +244,7 @@ class BatchParser {
     for (final sep in separators) {
       cleaned = cleaned.replaceAll(sep, ',');
     }
+    cleaned = cleaned.replaceAll(RegExp(r'(?<=\d{3})\.(?=\d{3})'), ',');
     cleaned = cleaned.replaceAll(RegExp(r'[\s\u3000]+'), ',');
     for (final part in cleaned.split(',')) {
       final trimmed = part.trim();
