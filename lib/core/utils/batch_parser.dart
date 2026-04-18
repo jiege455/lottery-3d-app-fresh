@@ -58,6 +58,8 @@ class BatchParser {
 
   static final RegExp _danTuoRegex = RegExp(r'^(\d)\s*拖\s*(\d{2,9})\s*组([六三63])\s*([*×xX]?\d*\.?\d*)\s*(米|元)?$');
 
+  static final RegExp _shuangFeiRegex = RegExp(r'^双飞\s*(\d{2})\s*([*×xX]?\d*\.?\d*)\s*(米|元)?$');
+
   static int? _parseChineseNum(String s) {
     if (s.isEmpty) return 1;
     const cnMap = {'一': 1, '二': 2, '两': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10};
@@ -522,6 +524,81 @@ class BatchParser {
     return results;
   }
 
+  static List<ParsedItem>? _tryParseShuangFei(String input, {String? forcePlayType, double defaultMultiplier = 1.0}) {
+    final lines = input.split(RegExp(r'[\n\r]')).where((l) => l.trim().isNotEmpty).toList();
+    final results = <ParsedItem>[];
+    final normalLines = <String>[];
+    var hasShuangFei = false;
+
+    for (final line in lines) {
+      final trimmed = line.trim();
+      final match = _shuangFeiRegex.firstMatch(trimmed);
+      if (match == null) {
+        normalLines.add(trimmed);
+        continue;
+      }
+
+      final digits = match.group(1)!;
+      final multStr = match.group(2);
+      final moneySuffix = match.group(3);
+
+      double? mult;
+      if (multStr != null && multStr.isNotEmpty) {
+        final cleaned = multStr.replaceFirst(RegExp(r'^[*×xX]'), '');
+        if (cleaned.isNotEmpty) {
+          final parsed = double.tryParse(cleaned);
+          if (parsed != null) {
+            final hasExplicitMult = multStr.startsWith(RegExp(r'[*×xX]'));
+            final isMoney = moneySuffix != null || (!hasExplicitMult && parsed >= 10);
+            mult = isMoney ? parsed / 10 : parsed;
+          }
+        }
+      }
+      final effectiveMult = mult ?? defaultMultiplier;
+
+      final isSameDigit = digits[0] == digits[1];
+      final playTypeCode = isSameDigit ? 'shuangfei_g3' : 'shuangfei_g6';
+      final config = PlayTypes.getByCode(playTypeCode);
+      if (config == null) {
+        normalLines.add(trimmed);
+        continue;
+      }
+
+      hasShuangFei = true;
+      results.add(ParsedItem(
+        number: digits,
+        playType: config.code,
+        playTypeName: config.name,
+        multiplier: effectiveMult,
+        color: config.color,
+        baseAmount: config.baseAmount,
+      ));
+    }
+
+    if (!hasShuangFei) return null;
+
+    if (normalLines.isNotEmpty) {
+      final danTuoResult = _tryParseDanTuo(normalLines.join('\n'), forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
+      if (danTuoResult != null) {
+        results.addAll(danTuoResult);
+      } else {
+        final singleGroupResult = _tryParseSingleGroupLines(normalLines.join('\n'), forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
+        if (singleGroupResult != null) {
+          results.addAll(singleGroupResult);
+        } else {
+          final preprocessed = _preprocessInput(normalLines.join('\n'));
+          final normalLinesList = preprocessed.split('\n').where((l) => l.trim().isNotEmpty).toList();
+          for (final line in normalLinesList) {
+            final lineItems = _parseLine(line.trim(), forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
+            results.addAll(lineItems);
+          }
+        }
+      }
+    }
+
+    return results;
+  }
+
   static bool _isMultiLinePosComposite(String input) {
     final joined = input.replaceAll('\n', ' ').replaceAll('\r', ' ').trim();
     if (!_isPosCompositeFormat(joined)) return false;
@@ -691,6 +768,9 @@ class BatchParser {
 
     final multiLinePosResult = _tryParseMultiLinePosition(input, forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
     if (multiLinePosResult != null) return multiLinePosResult;
+
+    final shuangFeiResult = _tryParseShuangFei(input, forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
+    if (shuangFeiResult != null) return shuangFeiResult;
 
     final danTuoResult = _tryParseDanTuo(input, forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
     if (danTuoResult != null) return danTuoResult;

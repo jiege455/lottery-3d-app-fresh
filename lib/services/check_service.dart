@@ -137,7 +137,11 @@ class CheckService {
         if (DrawRecord.getFormType(nums) == '组三') {
           final betDigits = bet.number.replaceAll(RegExp(r'[^0-9]'), '').split('').toSet();
           final drawDigits = nums.split('').toSet();
-          isWin = drawDigits.every((d) => betDigits.contains(d));
+          if (bet.number.replaceAll(RegExp(r'[^0-9]'), '').length <= 2) {
+            isWin = betDigits.every((d) => drawDigits.contains(d));
+          } else {
+            isWin = drawDigits.every((d) => betDigits.contains(d));
+          }
           if (isWin) winType = '双飞组三';
         }
         break;
@@ -145,7 +149,11 @@ class CheckService {
         if (DrawRecord.getFormType(nums) == '组六') {
           final betDigits = bet.number.replaceAll(RegExp(r'[^0-9]'), '').split('').toSet();
           final drawDigits = nums.split('').toSet();
-          isWin = drawDigits.every((d) => betDigits.contains(d));
+          if (bet.number.replaceAll(RegExp(r'[^0-9]'), '').length <= 2) {
+            isWin = betDigits.every((d) => drawDigits.contains(d));
+          } else {
+            isWin = drawDigits.every((d) => betDigits.contains(d));
+          }
           if (isWin) winType = '双飞组六';
         }
         break;
