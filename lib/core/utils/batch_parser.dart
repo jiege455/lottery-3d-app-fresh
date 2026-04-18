@@ -56,7 +56,7 @@ class BatchParser {
 
   static final RegExp _groupEntryRegex = RegExp(r'(\d{2,9})\s*组([六三63])');
 
-  static final RegExp _danTuoRegex = RegExp(r'^(\d)\s*拖\s*(\d{2,9})\s*组([六三63])\s*([*×xX]?\d*\.?\d*)\s*(米|元)?$');
+  static final RegExp _danTuoRegex = RegExp(r'^(\d{1,2})\s*拖\s*(\d{2,9})\s*组([六三63])\s*([*×xX]?\d*\.?\d*)\s*(米|元)?$');
 
   static int? _parseChineseNum(String s) {
     if (s.isEmpty) return 1;
@@ -446,14 +446,15 @@ class BatchParser {
         continue;
       }
 
-      final danDigit = match.group(1)!;
+      final danDigits = match.group(1)!.split('').toSet().toList()..sort();
       final tuoDigits = match.group(2)!.split('').toSet().toList()..sort();
       final typeHint = match.group(3)!;
       final multStr = match.group(4);
       final moneySuffix = match.group(5);
 
+      final danCount = danDigits.length;
       final tuoCount = tuoDigits.length;
-      if (tuoCount < 2 || tuoCount > 9) {
+      if (danCount < 1 || danCount > 2 || tuoCount < 2 || tuoCount > 9) {
         normalLines.add(trimmed);
         continue;
       }
@@ -487,7 +488,7 @@ class BatchParser {
       }
 
       hasDanTuo = true;
-      final numberStr = '$danDigit:${tuoDigits.join()}';
+      final numberStr = '${danDigits.join()}:${tuoDigits.join()}';
       results.add(ParsedItem(
         number: numberStr,
         playType: config.code,
