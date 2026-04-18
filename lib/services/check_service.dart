@@ -270,17 +270,17 @@ class CheckService {
   }
 
   static bool _isSameGroup(String a, String b) {
-    return Set.from(a.split('')) == Set.from(b.split(''));
+    final aSorted = a.split('')..sort();
+    final bSorted = b.split('')..sort();
+    return aSorted.join() == bSorted.join();
   }
 
   static bool _isGroup3(String s) {
-    final chars = s.split('');
-    final uniqueCount = chars.toSet().length;
-    return uniqueCount == 2;
+    return s.length == 3 && s.split('').toSet().length == 2;
   }
 
   static bool _isGroup6(String s) {
-    return s.split('').toSet().length == s.length;
+    return s.length == 3 && s.split('').toSet().length == 3;
   }
 
   static bool _checkComplexPlay(BetRecord bet, String nums) {

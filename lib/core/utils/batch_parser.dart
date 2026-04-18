@@ -534,13 +534,24 @@ class BatchParser {
 
     String playTypeCode;
     if (typeHint == '六' || typeHint == '6') {
-      if (count < 4) return [];
-      playTypeCode = 'g6_$count';
+      if (count < 3) return [];
+      if (count == 3) {
+        playTypeCode = 'group6';
+      } else {
+        playTypeCode = 'g6_$count';
+      }
     } else if (typeHint == '三' || typeHint == '3') {
       playTypeCode = 'g3_$count';
     } else {
       if (count <= 3) {
-        playTypeCode = 'g3_$count';
+        if (count == 2) {
+          playTypeCode = 'g3_2';
+        } else if (count == 3) {
+          final hasDup = _hasDuplicateDigit(digits);
+          playTypeCode = hasDup ? 'group3' : 'group6';
+        } else {
+          playTypeCode = 'g3_$count';
+        }
       } else {
         playTypeCode = 'g6_$count';
       }
@@ -789,7 +800,7 @@ class BatchParser {
       if (uniqueDigits >= 2 && uniqueDigits <= 9 && uniqueDigits == digitsOnly.length) {
         if (uniqueDigits <= 3) {
           if (uniqueDigits == 2) return 'g3_2';
-          return 'g3_$uniqueDigits';
+          return 'group6';
         }
         if (uniqueDigits == 4) return 'g6_4';
         return 'g6_$uniqueDigits';
