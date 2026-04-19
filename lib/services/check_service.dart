@@ -103,7 +103,12 @@ class CheckService {
         winType = '组六';
         break;
       case 'dan':
-        isWin = nums.contains(bet.number);
+        if (bet.number.length == 1) {
+          isWin = nums.contains(bet.number);
+        } else {
+          final betDigits = bet.number.split('');
+          isWin = betDigits.every((d) => nums.contains(d));
+        }
         winType = '胆码';
         break;
       case 'pos1':

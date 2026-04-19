@@ -974,7 +974,12 @@ class BatchParser {
     if (_isZqPlayType(forcePlayType)) {
       return _parseZqComposite(line, forcePlayType!, defaultMultiplier);
     }
-    if (forcePlayType != null) return _splitAndCreate(line, PlayTypes.getByCode(forcePlayType)!, defaultMultiplier);
+    if (forcePlayType != null) {
+      if (forcePlayType == 'dan') {
+        return _splitDanDigits(line, defaultMultiplier);
+      }
+      return _splitAndCreate(line, PlayTypes.getByCode(forcePlayType)!, defaultMultiplier);
+    }
     final numGroupResult = _parseNumGroupSuffix(line, defaultMultiplier);
     if (numGroupResult.isNotEmpty) return numGroupResult;
     final detected = _autoDetectPlayType(line);
@@ -1147,6 +1152,23 @@ class BatchParser {
   }
 
   static bool _hasDuplicateDigit(String s) => s.split('').toSet().length < s.length;
+
+  static List<ParsedItem> _splitDanDigits(String content, double defaultMultiplier) {
+    final config = PlayTypes.getByCode('dan')!;
+    final digitsOnly = content.replaceAll(RegExp(r'[^0-9]'), '');
+    final items = <ParsedItem>[];
+    for (final digit in digitsOnly.split('')) {
+      items.add(ParsedItem(
+        number: digit,
+        playType: config.code,
+        playTypeName: config.name,
+        multiplier: defaultMultiplier,
+        color: config.color,
+        baseAmount: config.baseAmount,
+      ));
+    }
+    return items;
+  }
 
   static List<ParsedItem> _splitAndCreate(String content, PlayTypeConfig config, double defaultMultiplier) {
     final parts = _splitContent(content);
