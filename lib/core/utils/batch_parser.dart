@@ -24,6 +24,19 @@ class ParsedItem {
 class BatchParser {
   static const int previewMax = 50;
   static const Set<String> separators = {',', ';', '\t', '，', '；', '、', '|'};
+
+  static String _normalizeSeparators(String text) {
+    var result = text;
+    for (final sep in separators) {
+      result = result.replaceAll(sep, ',');
+    }
+    result = result.replaceAll(RegExp(r'(?<=\d)[-—–](?=\d)'), ',');
+    result = result.replaceAll(RegExp(r'(?<=\d)/'), ',');
+    result = result.replaceAll(RegExp(r'(?<=\d{3})\.(?=\d)'), ',');
+    result = result.replaceAll(RegExp(r"(?<=\d)'(?=\d)"), ',');
+    result = result.replaceAll(RegExp(r'[\s\u3000]+'), ',');
+    return result;
+  }
   static final RegExp _multiplierRegex = RegExp(r'[*×xX](\d+\.?\d*)$');
 
   static final Map<String, String> _prefixLookup = () {
@@ -240,12 +253,7 @@ class BatchParser {
 
   static List<String> _extractThreeDigitNumbers(String text) {
     final parts = <String>[];
-    var cleaned = text;
-    for (final sep in separators) {
-      cleaned = cleaned.replaceAll(sep, ',');
-    }
-    cleaned = cleaned.replaceAll(RegExp(r'(?<=\d{3})\.(?=\d{3})'), ',');
-    cleaned = cleaned.replaceAll(RegExp(r'[\s\u3000]+'), ',');
+    final cleaned = _normalizeSeparators(text);
     for (final part in cleaned.split(',')) {
       final trimmed = part.trim();
       if (trimmed.isEmpty) continue;
@@ -1155,12 +1163,7 @@ class BatchParser {
   }
 
   static List<String> _splitContent(String content) {
-    var result = content;
-    for (final sep in separators) result = result.replaceAll(sep, ',');
-    result = result.replaceAll(RegExp(r'[\s\u3000]+'), ',');
-    result = result.replaceAll(RegExp(r'(?<=\d)[-—–](?=\d)'), ',');
-    result = result.replaceAll(RegExp(r'(?<=\d)/'), ',');
-    result = result.replaceAll(RegExp(r'(?<=\d{3})\.(?=\d{3})'), ',');
+    final result = _normalizeSeparators(content);
     return result.split(',').where((s) => s.trim().isNotEmpty).toList();
   }
 
