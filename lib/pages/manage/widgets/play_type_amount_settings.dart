@@ -18,9 +18,10 @@ class _PlayTypeAmountSettingsPageState extends State<PlayTypeAmountSettingsPage>
   final Map<String, TextEditingController> _winAmountControllers = {};
 
   static String _fmt(double v) {
-    final rounded = v.roundToDouble();
-    if (rounded == rounded.truncateToDouble()) return rounded.toInt().toString();
-    return rounded.toStringAsFixed(1);
+    if (v == v.truncateToDouble()) return v.toInt().toString();
+    final s = v.toStringAsFixed(2);
+    final trimmed = s.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+    return trimmed;
   }
 
   @override
@@ -40,7 +41,7 @@ class _PlayTypeAmountSettingsPageState extends State<PlayTypeAmountSettingsPage>
       var winAmount = settings.getPlayTypeWinAmount(pt.code);
       if (winAmount <= 0) {
         final defaultOdds = CheckService.oddsMap[pt.code] ?? 0.0;
-        winAmount = (amount * defaultOdds).roundToDouble();
+        winAmount = amount * defaultOdds;
       }
       _amountControllers[pt.code]!.text = _fmt(amount);
       _winAmountControllers[pt.code]!.text = _fmt(winAmount);
@@ -136,7 +137,7 @@ class _PlayTypeAmountSettingsPageState extends State<PlayTypeAmountSettingsPage>
 
   Widget _buildPlayTypeItem(String code, String name, double defaultAmount, SettingsProvider settings, bool isLast) {
     final defaultOdds = CheckService.oddsMap[code] ?? 0.0;
-    final defaultWin = (defaultAmount * defaultOdds).roundToDouble();
+    final defaultWin = defaultAmount * defaultOdds;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(border: isLast ? null : Border(bottom: BorderSide(color: AppColors.border.withAlpha(77)))),
