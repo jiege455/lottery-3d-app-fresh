@@ -264,12 +264,11 @@ class CheckService {
 
     double winAmount = 0;
     if (isWin) {
-      // ⚠️ 以下中奖金额计算规则已确认，禁止修改！杰哥网络科技 2026-04-12
-      // 所有玩法统一：中奖金额 = 倍数 × 投注金额 × 赔率（四舍五入取整）
+      // 所有玩法统一：中奖金额 = 倍数 × 投注金额 × 赔率
       if (customWinAmount > 0) {
         winAmount = bet.multiplier * customWinAmount;
       } else {
-        winAmount = (bet.multiplier * bet.baseAmount * baseOdds).roundToDouble();
+        winAmount = bet.multiplier * bet.baseAmount * baseOdds;
       }
     }
 
