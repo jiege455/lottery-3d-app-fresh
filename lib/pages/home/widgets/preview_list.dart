@@ -111,7 +111,7 @@ class _PreviewListState extends State<PreviewList> {
             if (!isDefaultAmount)
               Padding(
                 padding: const EdgeInsets.only(left: 1),
-                child: Text('${totalAmount.toStringAsFixed(1)}元', style: const TextStyle(fontSize: 7, color: AppColors.warning, fontWeight: FontWeight.w600)),
+                child: Text('${totalAmount.toStringAsFixed(2)}元', style: const TextStyle(fontSize: 7, color: AppColors.warning, fontWeight: FontWeight.w600)),
               ),
             Padding(
               padding: const EdgeInsets.only(left: 1),
@@ -119,7 +119,7 @@ class _PreviewListState extends State<PreviewList> {
             ),
             Padding(
               padding: const EdgeInsets.only(left: 1),
-              child: Text(totalAmount.toStringAsFixed(1), style: const TextStyle(fontSize: 7, fontWeight: FontWeight.w600, color: AppColors.primary)),
+              child: Text(totalAmount.toStringAsFixed(2), style: const TextStyle(fontSize: 7, fontWeight: FontWeight.w600, color: AppColors.primary)),
             ),
           ],
         ),
@@ -383,7 +383,7 @@ class _PreviewListState extends State<PreviewList> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(color: AppColors.warning.withAlpha(38), borderRadius: BorderRadius.circular(8)),
-                    child: Text('${perBetAmount.toStringAsFixed(1)}元/注', style: const TextStyle(fontSize: 11, color: AppColors.warning, fontWeight: FontWeight.w600)),
+                    child: Text('${perBetAmount.toStringAsFixed(2)}元/注', style: const TextStyle(fontSize: 11, color: AppColors.warning, fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),
@@ -394,7 +394,7 @@ class _PreviewListState extends State<PreviewList> {
             children: [
               Text('金额', style: TextStyle(fontSize: 10, color: AppColors.textLight)),
               const SizedBox(height: 4),
-              Text('${perBetAmount.toStringAsFixed(1)}元', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.danger)),
+              Text('${perBetAmount.toStringAsFixed(2)}元', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.danger)),
             ],
           ),
         ],

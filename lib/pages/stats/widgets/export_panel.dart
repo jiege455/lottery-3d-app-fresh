@@ -53,14 +53,14 @@ class ExportPanel extends StatelessWidget {
   String _generateCSV(List<BetRecord> bets) {
     final buf = StringBuffer();
     buf.write('\uFEFF');
-    buf.writeln('序号,彩种,玩法,号码,倍数,单价(元),金额(元),录入时间');
+    buf.writeln('序号,彩种,玩法,号码,金额(元),录入时间');
     for (var i = 0; i < bets.length; i++) {
       final b = bets[i];
-      final amount = (b.multiplier * b.baseAmount).toStringAsFixed(1);
-      buf.writeln('${i + 1},${_escapeCsvField(b.lotteryType == 1 ? "福彩3D" : "排列三")},${_escapeCsvField(b.playTypeName)},${_escapeCsvField(b.number)},${b.multiplier},${b.baseAmount.toStringAsFixed(1)},$amount,${DateFormat('yyyy-MM-dd HH:mm:ss').format(b.createTime)}');
+      final amount = (b.multiplier * b.baseAmount).toStringAsFixed(2);
+      buf.writeln('${i + 1},${_escapeCsvField(b.lotteryType == 1 ? "福彩3D" : "排列三")},${_escapeCsvField(b.playTypeName)},${_escapeCsvField(b.number)},$amount,${DateFormat('yyyy-MM-dd HH:mm:ss').format(b.createTime)}');
     }
     final totalAmount = bets.fold<double>(0, (sum, b) => sum + b.multiplier * b.baseAmount);
-    buf.writeln(',,,,,合计,${totalAmount.toStringAsFixed(1)}元,');
+    buf.writeln(',,,,合计,${totalAmount.toStringAsFixed(2)}元,');
     return buf.toString();
   }
 
@@ -78,30 +78,28 @@ class ExportPanel extends StatelessWidget {
       '',
       '  导出时间：${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())}',
       '  总记录数：${bets.length}',
-      '  总金额：${totalAmount.toStringAsFixed(1)} 元',
+      '  总金额：${totalAmount.toStringAsFixed(2)} 元',
       '',
       singleLine,
-      '  ${_padLeftDisplay("序号", 6)} ${_padRightDisplay("彩种", 10)} ${_padRightDisplay("玩法", 12)} ${_padRightDisplay("号码", 16)} ${_padLeftDisplay("倍数", 6)} ${_padLeftDisplay("单价", 8)} ${_padLeftDisplay("金额", 8)} 时间',
+      '  ${_padLeftDisplay("序号", 6)} ${_padRightDisplay("彩种", 10)} ${_padRightDisplay("玩法", 12)} ${_padRightDisplay("号码", 16)} ${_padLeftDisplay("金额", 8)} 时间',
       singleLine,
     ];
 
     for (var i = 0; i < bets.length; i++) {
       final b = bets[i];
       final lotteryName = b.lotteryType == 1 ? '福彩3D' : '排列三';
-      final amount = (b.multiplier * b.baseAmount).toStringAsFixed(1);
+      final amount = (b.multiplier * b.baseAmount).toStringAsFixed(2);
       final numStr = b.number.length > 14 ? '${b.number.substring(0, 12)}..' : b.number;
       final idx = (i + 1).toString();
-      final mulStr = '${b.multiplier}x';
-      final priceStr = '${b.baseAmount.toStringAsFixed(1)}元';
       final amtStr = '$amount元';
       lines.add(
-        '  ${_padLeftDisplay(idx, 6)} ${_padRightDisplay(lotteryName, 10)} ${_padRightDisplay(b.playTypeName, 12)} ${_padRightDisplay(numStr, 16)} ${_padLeftDisplay(mulStr, 6)} ${_padLeftDisplay(priceStr, 8)} ${_padLeftDisplay(amtStr, 8)} ${DateFormat('MM-dd HH:mm').format(b.createTime)}',
+        '  ${_padLeftDisplay(idx, 6)} ${_padRightDisplay(lotteryName, 10)} ${_padRightDisplay(b.playTypeName, 12)} ${_padRightDisplay(numStr, 16)} ${_padLeftDisplay(amtStr, 8)} ${DateFormat('MM-dd HH:mm').format(b.createTime)}',
       );
     }
 
     lines.addAll([
       singleLine,
-      '  合计：${bets.length} 条记录  总金额：${totalAmount.toStringAsFixed(1)} 元',
+      '  合计：${bets.length} 条记录  总金额：${totalAmount.toStringAsFixed(2)} 元',
       doubleLine,
     ]);
     return lines.join('\n');
@@ -115,7 +113,7 @@ class ExportPanel extends StatelessWidget {
         'developer': '杰哥网络科技',
         'exportTime': DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()),
         'totalRecords': bets.length,
-        'totalAmount': totalAmount.toStringAsFixed(1),
+        'totalAmount': totalAmount.toStringAsFixed(2),
       },
       'records': bets.map((b) => {
         'number': b.number,
@@ -125,7 +123,7 @@ class ExportPanel extends StatelessWidget {
         'lotteryName': b.lotteryType == 1 ? '福彩3D' : '排列三',
         'multiplier': b.multiplier,
         'baseAmount': b.baseAmount,
-        'amount': (b.multiplier * b.baseAmount).toStringAsFixed(1),
+        'amount': (b.multiplier * b.baseAmount).toStringAsFixed(2),
         'batchId': b.batchId,
         'createTime': DateFormat('yyyy-MM-dd HH:mm:ss').format(b.createTime),
       }).toList(),
@@ -141,18 +139,18 @@ class ExportPanel extends StatelessWidget {
     buf.writeln();
     buf.writeln('> 开发者：杰哥网络科技 · 导出时间：${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())}');
     buf.writeln('>');
-    buf.writeln('> 总记录数：${bets.length} · 总金额：${totalAmount.toStringAsFixed(1)} 元');
+    buf.writeln('> 总记录数：${bets.length} · 总金额：${totalAmount.toStringAsFixed(2)} 元');
     buf.writeln();
-    buf.writeln('| 序号 | 彩种 | 玩法 | 号码 | 倍数 | 单价(元) | 金额(元) | 时间 |');
-    buf.writeln('|------|------|------|------|------|----------|----------|------|');
+    buf.writeln('| 序号 | 彩种 | 玩法 | 号码 | 金额(元) | 时间 |');
+    buf.writeln('|------|------|------|------|----------|------|');
     for (var i = 0; i < bets.length; i++) {
       final b = bets[i];
-      final amount = (b.multiplier * b.baseAmount).toStringAsFixed(1);
+      final amount = (b.multiplier * b.baseAmount).toStringAsFixed(2);
       final lotteryName = b.lotteryType == 1 ? '福彩3D' : '排列三';
-      buf.writeln('| ${i + 1} | $lotteryName | ${b.playTypeName} | ${b.number} | ${b.multiplier}x | ${b.baseAmount.toStringAsFixed(1)} | $amount | ${DateFormat('MM-dd HH:mm').format(b.createTime)} |');
+      buf.writeln('| ${i + 1} | $lotteryName | ${b.playTypeName} | ${b.number} | $amount | ${DateFormat('MM-dd HH:mm').format(b.createTime)} |');
     }
     buf.writeln();
-    buf.writeln('**合计：${bets.length} 条记录 · 总金额：${totalAmount.toStringAsFixed(1)} 元**');
+    buf.writeln('**合计：${bets.length} 条记录 · 总金额：${totalAmount.toStringAsFixed(2)} 元**');
     return buf.toString();
   }
 
@@ -262,7 +260,7 @@ class ExportPanel extends StatelessWidget {
         contentPadding: EdgeInsets.zero,
         leading: const Icon(Icons.upload_file_outlined, color: AppColors.primary, size: 28),
         title: const Text('数据导出', style: TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text('共 ${bets.length} 条记录 / ${totalAmount.toStringAsFixed(1)} 元 · 支持 CSV/TXT/JSON/MD', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        subtitle: Text('共 ${bets.length} 条记录 / ${totalAmount.toStringAsFixed(2)} 元 · 支持 CSV/TXT/JSON/MD', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
         trailing: const Icon(Icons.chevron_right),
         onTap: () => _showExportDialog(context, bets),
       ),

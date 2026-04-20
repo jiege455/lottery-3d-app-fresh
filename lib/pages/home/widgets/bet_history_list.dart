@@ -102,7 +102,7 @@ class _BetHistoryListState extends State<BetHistoryList> {
   }
 
   void _showEditDialog(BetRecord bet) {
-    final multiplierCtl = TextEditingController(text: bet.multiplier.toString());
+    final multiplierCtl = TextEditingController(text: (bet.multiplier * bet.baseAmount).toString());
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -119,7 +119,7 @@ class _BetHistoryListState extends State<BetHistoryList> {
               controller: multiplierCtl,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: const InputDecoration(
-                labelText: '倍数',
+                labelText: '每注金额(元)',
                 isDense: true,
               ),
             ),
@@ -129,12 +129,13 @@ class _BetHistoryListState extends State<BetHistoryList> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
           ElevatedButton(
             onPressed: () async {
-              final newMultiplier = double.tryParse(multiplierCtl.text);
-              if (newMultiplier == null || newMultiplier <= 0) {
-                ToastUtil.warning(context, '请输入有效倍数');
+              final newAmount = double.tryParse(multiplierCtl.text);
+              if (newAmount == null || newAmount <= 0) {
+                ToastUtil.warning(context, '请输入有效金额');
                 return;
               }
               Navigator.pop(ctx);
+              final newMultiplier = bet.baseAmount > 0 ? newAmount / bet.baseAmount : 1.0;
               final updated = bet.copyWith(multiplier: newMultiplier);
               await Provider.of<BetProvider>(context, listen: false).updateBet(updated);
               if (mounted) ToastUtil.success(context, '已更新');
@@ -151,7 +152,7 @@ class _BetHistoryListState extends State<BetHistoryList> {
     final editControllers = <int, TextEditingController>{};
     for (final bet in bets) {
       if (bet.id != null) {
-        editControllers[bet.id!] = TextEditingController(text: bet.multiplier.toString());
+        editControllers[bet.id!] = TextEditingController(text: (bet.multiplier * bet.baseAmount).toString());
       }
     }
     showDialog(
@@ -175,7 +176,7 @@ class _BetHistoryListState extends State<BetHistoryList> {
                     children: [
                       const Icon(Icons.edit_note, size: 16, color: AppColors.primary),
                       const SizedBox(width: 8),
-                      const Text('批量修改倍数', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                      const Text('批量修改金额', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
                       const Spacer(),
                       SizedBox(
                         width: 80,
@@ -187,7 +188,7 @@ class _BetHistoryListState extends State<BetHistoryList> {
                             isDense: true,
                             contentPadding: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
                             border: OutlineInputBorder(),
-                            hintText: '倍数',
+                            hintText: '金额',
                           ),
                         ),
                       ),
@@ -273,12 +274,13 @@ class _BetHistoryListState extends State<BetHistoryList> {
                   if (bet.id == null) continue;
                   final ctl = editControllers[bet.id];
                   if (ctl == null) continue;
-                  final newMult = double.tryParse(ctl.text);
-                  if (newMult == null || newMult <= 0) continue;
-                  updatedBets.add(bet.copyWith(multiplier: newMult));
+                  final newAmount = double.tryParse(ctl.text);
+                  if (newAmount == null || newAmount <= 0) continue;
+                  final newMultiplier = bet.baseAmount > 0 ? newAmount / bet.baseAmount : 1.0;
+                  updatedBets.add(bet.copyWith(multiplier: newMultiplier));
                 }
                 if (updatedBets.isEmpty) {
-                  ToastUtil.warning(context, '请输入有效倍数');
+                  ToastUtil.warning(context, '请输入有效金额');
                   return;
                 }
                 Navigator.pop(ctx);
@@ -424,7 +426,7 @@ class _BetHistoryListState extends State<BetHistoryList> {
             if (!_isSearchMode) ...[
               Text('${totalBets.length}注', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               const SizedBox(width: 8),
-              Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: AppColors.danger.withAlpha(26), borderRadius: BorderRadius.circular(10)), child: Text('${totalAmount.toStringAsFixed(1)}元', style: TextStyle(fontSize: 11, color: AppColors.danger, fontWeight: FontWeight.w600))),
+              Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: AppColors.danger.withAlpha(26), borderRadius: BorderRadius.circular(10)), child: Text('${totalAmount.toStringAsFixed(2)}元', style: TextStyle(fontSize: 11, color: AppColors.danger, fontWeight: FontWeight.w600))),
             ],
             const SizedBox(width: 4),
             if (_isSelectMode && _selectedIds.isNotEmpty)
@@ -640,7 +642,7 @@ class _BetHistoryListState extends State<BetHistoryList> {
                             ),
                           Expanded(
                             child: Text(
-                              '${bet.number} ×${bet.multiplier}',
+                              '${bet.number} ${(bet.multiplier * bet.baseAmount).toStringAsFixed(2)}元',
                               style: TextStyle(fontSize: 10, color: playColor, fontWeight: FontWeight.w500, fontFamily: 'monospace'),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -708,7 +710,7 @@ class _BetHistoryListState extends State<BetHistoryList> {
                 children: [
                   Text('${bets.length}注', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                   const SizedBox(width: 8),
-                  Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: AppColors.danger.withAlpha(26), borderRadius: BorderRadius.circular(10)), child: Text('${batchAmount.toStringAsFixed(1)}元', style: TextStyle(fontSize: 11, color: AppColors.danger, fontWeight: FontWeight.w600))),
+                  Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: AppColors.danger.withAlpha(26), borderRadius: BorderRadius.circular(10)), child: Text('${batchAmount.toStringAsFixed(2)}元', style: TextStyle(fontSize: 11, color: AppColors.danger, fontWeight: FontWeight.w600))),
                 ],
               ),
             ],

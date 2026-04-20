@@ -32,7 +32,7 @@ class PlayTypeStats extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           const Text('玩法分布', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          Text('${totalAmount.toStringAsFixed(0)} 元', style: TextStyle(fontSize: 12, color: AppColors.danger, fontWeight: FontWeight.w600)),
+          Text('${totalAmount.toStringAsFixed(2)} 元', style: TextStyle(fontSize: 12, color: AppColors.danger, fontWeight: FontWeight.w600)),
         ]),
         const SizedBox(height: 12),
         ...sorted.take(10).map((e) => Padding(padding: const EdgeInsets.only(bottom: 8), child: _buildBar(e.key, e.value['count'] as int, e.value['totalAmount'] as double, maxVal, totalCount))),
@@ -57,7 +57,7 @@ class PlayTypeStats extends StatelessWidget {
       const SizedBox(width: 8),
       Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(value: ratio.toDouble(), minHeight: 8, backgroundColor: AppColors.border, valueColor: AlwaysStoppedAnimation(color)))),
       const SizedBox(width: 8),
-      Expanded(child: Text('$count 注 ${amount.toStringAsFixed(1)} 元 (${pct.toStringAsFixed(1)}%)', style: TextStyle(fontSize: 10, color: AppColors.textSecondary), textAlign: TextAlign.right, overflow: TextOverflow.ellipsis, maxLines: 1)),
+      Expanded(child: Text('$count 注 ${amount.toStringAsFixed(2)} 元 (${pct.toStringAsFixed(1)}%)', style: TextStyle(fontSize: 10, color: AppColors.textSecondary), textAlign: TextAlign.right, overflow: TextOverflow.ellipsis, maxLines: 1)),
     ]);
   }
 }

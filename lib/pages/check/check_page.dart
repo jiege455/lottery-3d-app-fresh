@@ -372,9 +372,9 @@ class _CheckPageState extends State<CheckPage> {
 
     return Container(margin: const EdgeInsets.symmetric(horizontal: 16), padding: const EdgeInsets.all(18), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(AppStyles.radiusSm), boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 4)]), child: Column(children: [
       Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-        _buildStatItem('总投注', '${totalBet.toStringAsFixed(1)} 元', AppColors.primary),
-        _buildStatItem('总赔付', '${totalWin.toStringAsFixed(1)} 元', AppColors.danger),
-        _buildStatItem(profit >= 0 ? '盈利' : '亏损', '${profit.abs().toStringAsFixed(1)} 元', profit >= 0 ? AppColors.success : AppColors.danger),
+        _buildStatItem('总投注', '${totalBet.toStringAsFixed(2)} 元', AppColors.primary),
+        _buildStatItem('总赔付', '${totalWin.toStringAsFixed(2)} 元', AppColors.danger),
+        _buildStatItem(profit >= 0 ? '盈利' : '亏损', '${profit.abs().toStringAsFixed(2)} 元', profit >= 0 ? AppColors.success : AppColors.danger),
       ]),
       const Divider(height: 24),
       Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
@@ -465,13 +465,13 @@ class _CheckPageState extends State<CheckPage> {
     return Container(margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10), decoration: BoxDecoration(color: isWin ? AppColors.success.withAlpha(15) : Colors.transparent, borderRadius: BorderRadius.circular(AppStyles.radiusXs)), child: Row(children: [
       Expanded(flex: 2, child: Text(result.bet.number, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, fontFamily: 'monospace'))),
       Expanded(flex: 2, child: Text(result.bet.playTypeName, style: TextStyle(fontSize: 11, color: AppColors.textSecondary))),
-      Expanded(child: Text('${result.betAmount.toStringAsFixed(1)} 元', style: TextStyle(fontSize: 11, color: AppColors.textSecondary), textAlign: TextAlign.right)),
+      Expanded(child: Text('${result.betAmount.toStringAsFixed(2)} 元', style: TextStyle(fontSize: 11, color: AppColors.textSecondary), textAlign: TextAlign.right)),
       if (isWin) ...[
         const SizedBox(width: 8),
-        Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: AppColors.success.withAlpha(38), borderRadius: BorderRadius.circular(6)), child: Text('+${result.winAmount.toStringAsFixed(1)}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.success))),
+        Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: AppColors.success.withAlpha(38), borderRadius: BorderRadius.circular(6)), child: Text('+${result.winAmount.toStringAsFixed(2)}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.success))),
       ] else ...[
         const SizedBox(width: 8),
-        Expanded(child: Text('-${result.betAmount.toStringAsFixed(1)}', style: TextStyle(fontSize: 12, color: AppColors.textLight), textAlign: TextAlign.right)),
+        Expanded(child: Text('-${result.betAmount.toStringAsFixed(2)}', style: TextStyle(fontSize: 12, color: AppColors.textLight), textAlign: TextAlign.right)),
       ],
     ]));
   }
@@ -506,8 +506,8 @@ class _CheckPageState extends State<CheckPage> {
           const SizedBox(height: 3),
           Row(
             children: [
-              Text('-${result.betAmount.toStringAsFixed(1)}元', style: TextStyle(fontSize: 10, color: AppColors.textLight)),
-              if (result.bet.multiplier != 1.0) ...[
+              Text('-${result.betAmount.toStringAsFixed(2)}元', style: TextStyle(fontSize: 10, color: AppColors.textLight)),
+              if ((result.bet.multiplier - 1.0).abs() > 0.001) ...[
                 const SizedBox(width: 3),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 0),
@@ -515,7 +515,7 @@ class _CheckPageState extends State<CheckPage> {
                     color: AppColors.warning.withAlpha(20),
                     borderRadius: BorderRadius.circular(3),
                   ),
-                  child: Text('×${result.bet.multiplier}', style: TextStyle(fontSize: 8, color: AppColors.warning, fontWeight: FontWeight.w600)),
+                  child: Text('${(result.bet.multiplier * result.bet.baseAmount).toStringAsFixed(2)}元', style: TextStyle(fontSize: 8, color: AppColors.warning, fontWeight: FontWeight.w600)),
                 ),
               ],
             ],

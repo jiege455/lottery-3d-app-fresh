@@ -212,7 +212,7 @@ class _EntryPageState extends State<EntryPage> {
           ]),
           Container(width: 1, height: 30, color: AppColors.border),
           Column(children: [
-            Text('${_totalAmount.toStringAsFixed(1)} 元', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.danger)),
+            Text('${_totalAmount.toStringAsFixed(2)} 元', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.danger)),
             Text('总金额', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
           ]),
         ],
@@ -269,7 +269,7 @@ class _EntryPageState extends State<EntryPage> {
       child: SizedBox(width: double.infinity, child: ElevatedButton.icon(
         onPressed: _saveBets,
         icon: const Icon(Icons.save, size: 18),
-        label: Text('保存投注 (${_parsedItems.length} 注 / ${_totalAmount.toStringAsFixed(1)} 元)', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+        label: Text('保存投注 (${_parsedItems.length} 注 / ${_totalAmount.toStringAsFixed(2)} 元)', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
       )),
     );
   }

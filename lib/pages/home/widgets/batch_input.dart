@@ -134,15 +134,15 @@ class BatchInput extends StatelessWidget {
         '输入 组选：358 → 自动识别组三/组六',
         '输入 复式：158 → 复式3码',
       ]},
-      {'title': '💰 倍数/金额说明', 'items': [
+      {'title': '💰 金额说明', 'items': [
         '358*2 → 2倍（*号标记倍数）',
-        '1234组六10 → 1倍（10元=1倍）',
-        '1234组六20 → 2倍（20元=2倍）',
-        '1234组六10米 → 1倍（米=元）',
-        '1234组六10元 → 1倍',
+        '1234组六10 → 10元/注',
+        '1234组六20 → 20元/注',
+        '1234组六10米 → 10元/注（米=元）',
+        '1234组六10元 → 10元/注',
         '1234组六*2 → 2倍（*号直接倍数）',
-        '双飞12 10米 → 1倍',
-        '双飞12 20 → 2倍',
+        '双飞12 10米 → 10元/注',
+        '双飞12 20 → 20元/注',
       ]},
     ];
 
@@ -187,7 +187,7 @@ class BatchInput extends StatelessWidget {
             onChanged: onChanged,
             style: const TextStyle(fontFamily: 'monospace', fontSize: 14, letterSpacing: 0.5),
             decoration: InputDecoration(
-              hintText: '输入号码，支持逗号/顿号/横线/斜杠/空格分隔\n支持前缀标记玩法，如：直选：358\n支持倍数标记，如：358*2',
+              hintText: '输入号码，支持逗号/顿号/横线/斜杠/空格分隔\n支持前缀标记玩法，如：直选：358\n支持金额标记，如：358*2',
               hintStyle: const TextStyle(fontSize: 13, color: AppColors.textLight),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppStyles.radiusXs), borderSide: const BorderSide(color: AppColors.border)),
               contentPadding: const EdgeInsets.all(12),

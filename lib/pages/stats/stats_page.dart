@@ -68,7 +68,7 @@ class _StatsPageState extends State<StatsPage> {
     final lotteryType = settings.defaultLotteryType;
 
     final totalAmount = _filteredBets.fold<double>(0, (sum, b) => sum + b.multiplier * b.baseAmount);
-    final totalMultiplier = _filteredBets.fold<double>(0, (sum, b) => sum + b.multiplier);
+    final avgAmount = _filteredBets.isNotEmpty ? totalAmount / _filteredBets.length : 0.0;
     final playTypeCount = _filteredBets.map((b) => b.playType).toSet().length;
 
     return SafeArea(
@@ -93,7 +93,7 @@ class _StatsPageState extends State<StatsPage> {
               allBets: betProvider.bets.where((b) => b.lotteryType == lotteryType).toList(),
               onFilterApplied: _onFilterApplied,
             ),
-            _buildOverviewCard(_filteredBets, totalAmount, totalMultiplier, playTypeCount, lotteryType),
+            _buildOverviewCard(_filteredBets, totalAmount, avgAmount, playTypeCount, lotteryType),
             const SizedBox(height: 8),
             if (_filteredBets.isNotEmpty) ...[
               _buildNumberStats(_filteredBets),
@@ -232,7 +232,7 @@ class _StatsPageState extends State<StatsPage> {
     );
   }
 
-  Widget _buildOverviewCard(List filteredBets, double totalAmount, double totalMultiplier, int playTypeCount, int lotteryType) {
+  Widget _buildOverviewCard(List filteredBets, double totalAmount, double avgAmount, int playTypeCount, int lotteryType) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(18),
@@ -244,16 +244,16 @@ class _StatsPageState extends State<StatsPage> {
       child: Column(children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
           _buildStatItem('总投注数', '${filteredBets.length}', Colors.white),
-          _buildStatItem('总金额', '${totalAmount.toStringAsFixed(1)} 元', Colors.yellowAccent),
+          _buildStatItem('总金额', '${totalAmount.toStringAsFixed(2)} 元', Colors.yellowAccent),
           _buildStatItem('彩种', lotteryType == 1 ? '福彩3D' : '排列三', Colors.white70),
         ]),
         const SizedBox(height: 12),
         Container(height: 1, color: Colors.white24),
         const SizedBox(height: 12),
         Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-          _buildStatItem('总倍数', '${totalMultiplier.toStringAsFixed(1)}', Colors.white70),
+          _buildStatItem('总注数', '${filteredBets.length}', Colors.white70),
           _buildStatItem('玩法种类', '$playTypeCount', Colors.white70),
-          _buildStatItem('平均倍数', filteredBets.isNotEmpty ? '${(totalMultiplier / filteredBets.length).toStringAsFixed(1)}' : '0', Colors.white70),
+          _buildStatItem('平均金额', '${avgAmount.toStringAsFixed(2)} 元', Colors.white70),
         ]),
       ]),
     );
@@ -304,13 +304,13 @@ class _StatsPageState extends State<StatsPage> {
                   const SizedBox(width: 8),
                   Text('$totalForType 注', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                 ]),
-                Text('${amount.toStringAsFixed(1)} 元', style: TextStyle(fontSize: 12, color: AppColors.danger, fontWeight: FontWeight.w600)),
+                Text('${amount.toStringAsFixed(2)} 元', style: TextStyle(fontSize: 12, color: AppColors.danger, fontWeight: FontWeight.w600)),
               ]),
               const SizedBox(height: 8),
               Wrap(spacing: 4, runSpacing: 4, children: displayBets.map((b) => Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                 decoration: BoxDecoration(color: color.withAlpha(20), borderRadius: BorderRadius.circular(4)),
-                child: Text('${b.number}${b.multiplier != 1.0 ? "×${b.multiplier}" : ""}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: color, fontFamily: 'monospace')),
+                child: Text('${b.number}${b.multiplier * b.baseAmount != b.baseAmount ? " ${(b.multiplier * b.baseAmount).toStringAsFixed(2)}元" : ""}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: color, fontFamily: 'monospace')),
               )).toList()),
               if (hasMore) GestureDetector(
                 onTap: () {

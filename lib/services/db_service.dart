@@ -34,7 +34,7 @@ class DatabaseHelper {
   Future<Database> _initDB(String filePath) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
-    return await openDatabase(path, version: 3, onCreate: _onCreate, onUpgrade: _onUpgrade);
+    return await openDatabase(path, version: 4, onCreate: _onCreate, onUpgrade: _onUpgrade);
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -87,7 +87,7 @@ class DatabaseHelper {
         win_amount REAL DEFAULT 0.0
       )
     ''');
-    await db.insert('settings', {'id': 1, 'default_multiplier': 1.0, 'default_lottery_type': 1, 'last_backup_time': ''}, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert('settings', {'id': 1, 'default_multiplier': 2.0, 'default_lottery_type': 1, 'last_backup_time': ''}, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -127,6 +127,18 @@ class DatabaseHelper {
         print('Database upgrade v3 error: $e');
       }
     }
+    if (oldVersion < 4) {
+      try {
+        final result = await db.query('settings', where: 'id = 1');
+        if (result.isNotEmpty) {
+          final oldMult = (result.first['default_multiplier'] as num?)?.toDouble() ?? 1.0;
+          final newAmount = oldMult * 2.0;
+          await db.update('settings', {'default_multiplier': newAmount}, where: 'id = 1');
+        }
+      } catch (e) {
+        print('Database upgrade v4 error: $e');
+      }
+    }
   }
 
   Future<void> _createTableIfNotExists(Database db, String tableName, String createSql) async {
@@ -144,7 +156,7 @@ class DatabaseHelper {
     try {
       final result = await db.query('settings', where: 'id = 1');
       if (result.isEmpty) {
-        await db.insert('settings', {'id': 1, 'default_multiplier': 1.0, 'default_lottery_type': 1, 'last_backup_time': ''}, conflictAlgorithm: ConflictAlgorithm.replace);
+        await db.insert('settings', {'id': 1, 'default_multiplier': 2.0, 'default_lottery_type': 1, 'last_backup_time': ''}, conflictAlgorithm: ConflictAlgorithm.replace);
       }
     } catch (e) {
       print('Ensure settings row error: $e');
@@ -184,7 +196,7 @@ class DatabaseHelper {
       throw ArgumentError('投注号码长度不能超过100个字符');
     }
     if (record.multiplier <= 0 || record.multiplier > 99999) {
-      throw ArgumentError('倍数必须在 1-99999 之间');
+      throw ArgumentError('投注倍数无效');
     }
     if (record.baseAmount <= 0 || record.baseAmount > 99999) {
       throw ArgumentError('投注金额必须在 1-99999 元之间');

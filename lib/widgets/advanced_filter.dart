@@ -74,13 +74,13 @@ class _AdvancedFilterState extends State<AdvancedFilter> {
     if (_multiplierRange != 'all') {
       switch (_multiplierRange) {
         case 'low':
-          filtered = filtered.where((b) => b.multiplier < 5).toList();
+          filtered = filtered.where((b) => b.multiplier * b.baseAmount < 5).toList();
           break;
         case 'medium':
-          filtered = filtered.where((b) => b.multiplier >= 5 && b.multiplier < 20).toList();
+          filtered = filtered.where((b) => b.multiplier * b.baseAmount >= 5 && b.multiplier * b.baseAmount < 20).toList();
           break;
         case 'high':
-          filtered = filtered.where((b) => b.multiplier >= 20).toList();
+          filtered = filtered.where((b) => b.multiplier * b.baseAmount >= 20).toList();
           break;
       }
     }
@@ -298,17 +298,17 @@ class _AdvancedFilterState extends State<AdvancedFilter> {
                   
                   const SizedBox(height: 12),
                   _buildFilterSection(
-                    title: '倍数范围',
+                    title: '金额范围',
                     icon: Icons.multiline_chart,
                     child: Row(
                       children: [
                         _buildFilterChip('全部', 'all', _multiplierRange, (v) => setState(() => _multiplierRange = v)),
                         const SizedBox(width: 8),
-                        _buildFilterChip('<5 倍', 'low', _multiplierRange, (v) => setState(() => _multiplierRange = v)),
+                        _buildFilterChip('<5元', 'low', _multiplierRange, (v) => setState(() => _multiplierRange = v)),
                         const SizedBox(width: 8),
-                        _buildFilterChip('5-20 倍', 'medium', _multiplierRange, (v) => setState(() => _multiplierRange = v)),
+                        _buildFilterChip('5-20元', 'medium', _multiplierRange, (v) => setState(() => _multiplierRange = v)),
                         const SizedBox(width: 8),
-                        _buildFilterChip('>20 倍', 'high', _multiplierRange, (v) => setState(() => _multiplierRange = v)),
+                        _buildFilterChip('>20元', 'high', _multiplierRange, (v) => setState(() => _multiplierRange = v)),
                       ],
                     ),
                   ),
