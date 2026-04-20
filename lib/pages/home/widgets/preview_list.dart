@@ -37,7 +37,7 @@ class _PreviewListState extends State<PreviewList> {
             if (hiddenCount > 0) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: AppColors.warning.withAlpha(26), borderRadius: BorderRadius.circular(10)), child: Text('还有$hiddenCount条未显示', style: TextStyle(fontSize: 11, color: AppColors.warning))),
           ]),
           const SizedBox(height: 6),
-          Text('点击条目可单独修改玩法或倍数', style: TextStyle(fontSize: 10, color: AppColors.textLight)),
+          Text('点击条目可单独修改玩法或金额', style: TextStyle(fontSize: 10, color: AppColors.textLight)),
           const SizedBox(height: 8),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -89,6 +89,7 @@ class _PreviewListState extends State<PreviewList> {
 
   Widget _buildItem(BuildContext context, int index, ParsedItem item, double itemWidth) {
     final totalAmount = item.multiplier * item.baseAmount;
+    final isDefaultAmount = (totalAmount - item.baseAmount).abs() < 0.001;
     return GestureDetector(
       onTap: () => _showEditSheet(context, index, item),
       child: Container(
@@ -107,10 +108,10 @@ class _PreviewListState extends State<PreviewList> {
             Flexible(
               child: Text(item.number, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, fontFamily: 'monospace'), overflow: TextOverflow.ellipsis),
             ),
-            if (item.multiplier != 1.0)
+            if (!isDefaultAmount)
               Padding(
                 padding: const EdgeInsets.only(left: 1),
-                child: Text('×${item.multiplier}', style: const TextStyle(fontSize: 7, color: AppColors.warning, fontWeight: FontWeight.w600)),
+                child: Text('${totalAmount.toStringAsFixed(1)}元', style: const TextStyle(fontSize: 7, color: AppColors.warning, fontWeight: FontWeight.w600)),
               ),
             Padding(
               padding: const EdgeInsets.only(left: 1),
@@ -128,7 +129,7 @@ class _PreviewListState extends State<PreviewList> {
 
   void _showEditSheet(BuildContext context, int index, ParsedItem item) {
     String selectedPlayType = item.playType;
-    double selectedMultiplier = item.multiplier;
+    double selectedPerBetAmount = item.multiplier * item.baseAmount;
 
     showModalBottomSheet(
       context: context,
@@ -174,13 +175,13 @@ class _PreviewListState extends State<PreviewList> {
                             setSheetState(() => selectedPlayType = code);
                           }),
                           const SizedBox(height: 16),
-                          Text('倍数', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          Text('每注金额(元)', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                           const SizedBox(height: 8),
-                          _buildMultiplierSelector(selectedMultiplier, (val) {
-                            setSheetState(() => selectedMultiplier = val);
+                          _buildMultiplierSelector(selectedPerBetAmount, (val) {
+                            setSheetState(() => selectedPerBetAmount = val);
                           }),
                           const SizedBox(height: 16),
-                          _buildPreviewInfo(item, selectedPlayType, selectedMultiplier),
+                          _buildPreviewInfo(item, selectedPlayType, selectedPerBetAmount),
                           const SizedBox(height: 20),
                         ],
                       ),
@@ -212,7 +213,7 @@ class _PreviewListState extends State<PreviewList> {
                                   item.color = config.color;
                                   item.baseAmount = config.baseAmount;
                                 }
-                                item.multiplier = selectedMultiplier;
+                                item.multiplier = item.baseAmount > 0 ? selectedPerBetAmount / item.baseAmount : 1.0;
                                 item.isMultiplierCustomized = true;
                                 widget.onItemUpdated?.call(index, item);
                                 Navigator.pop(context);
@@ -283,16 +284,16 @@ class _PreviewListState extends State<PreviewList> {
     );
   }
 
-  Widget _buildMultiplierSelector(double currentMultiplier, ValueChanged<double> onChanged) {
-    final quickMultipliers = [0.1, 0.5, 1.0, 2.0, 3.0, 5.0, 10.0, 20.0, 50.0];
+  Widget _buildMultiplierSelector(double currentAmount, ValueChanged<double> onChanged) {
+    final quickAmounts = [0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Wrap(
           spacing: 6,
           runSpacing: 6,
-          children: quickMultipliers.map((m) {
-            final isSelected = currentMultiplier == m;
+          children: quickAmounts.map((m) {
+            final isSelected = (currentAmount - m).abs() < 0.001;
             return GestureDetector(
               onTap: () => onChanged(m),
               child: Container(
@@ -303,7 +304,7 @@ class _PreviewListState extends State<PreviewList> {
                   border: Border.all(color: isSelected ? AppColors.primary : Colors.transparent, width: 1),
                 ),
                 child: Text(
-                  '${m}x',
+                  '${m}元',
                   style: TextStyle(
                     fontSize: 12,
                     color: isSelected ? Colors.white : AppColors.textPrimary,
@@ -326,7 +327,7 @@ class _PreviewListState extends State<PreviewList> {
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                 decoration: InputDecoration(
-                  hintText: currentMultiplier.toString(),
+                  hintText: currentAmount.toString(),
                   hintStyle: TextStyle(fontSize: 14, color: AppColors.textLight),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                   isDense: true,
@@ -349,12 +350,10 @@ class _PreviewListState extends State<PreviewList> {
     );
   }
 
-  Widget _buildPreviewInfo(ParsedItem item, String playTypeCode, double multiplier) {
+  Widget _buildPreviewInfo(ParsedItem item, String playTypeCode, double perBetAmount) {
     final config = PlayTypes.getByCode(playTypeCode);
-    final baseAmount = config?.baseAmount ?? item.baseAmount;
     final playTypeName = config?.name ?? item.playTypeName;
     final color = config?.color ?? item.color;
-    final totalAmount = multiplier * baseAmount;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -384,7 +383,7 @@ class _PreviewListState extends State<PreviewList> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(color: AppColors.warning.withAlpha(38), borderRadius: BorderRadius.circular(8)),
-                    child: Text('×$multiplier', style: const TextStyle(fontSize: 11, color: AppColors.warning, fontWeight: FontWeight.w600)),
+                    child: Text('${perBetAmount.toStringAsFixed(1)}元/注', style: const TextStyle(fontSize: 11, color: AppColors.warning, fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),
@@ -395,7 +394,7 @@ class _PreviewListState extends State<PreviewList> {
             children: [
               Text('金额', style: TextStyle(fontSize: 10, color: AppColors.textLight)),
               const SizedBox(height: 4),
-              Text('${totalAmount.toStringAsFixed(1)}元', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.danger)),
+              Text('${perBetAmount.toStringAsFixed(1)}元', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.danger)),
             ],
           ),
         ],

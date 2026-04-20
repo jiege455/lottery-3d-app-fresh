@@ -23,7 +23,7 @@ class EntryPage extends StatefulWidget {
 class _EntryPageState extends State<EntryPage> {
   String _selectedPlayType = 'auto';
   TextEditingController _inputController = TextEditingController();
-  TextEditingController _multiplierController = TextEditingController(text: '1');
+  TextEditingController _multiplierController = TextEditingController(text: '2');
   List<ParsedItem> _parsedItems = [];
   Timer? _debounce;
   bool _syncedMultiplier = false;
@@ -47,18 +47,18 @@ class _EntryPageState extends State<EntryPage> {
 
   void _onMultiplierChanged() {
     if (!mounted) return;
-    final val = double.tryParse(_multiplierController.text);
-    if (val != null && val > 0) {
+    final amount = double.tryParse(_multiplierController.text);
+    if (amount != null && amount > 0) {
       try {
         final settings = Provider.of<SettingsProvider>(context, listen: false);
-        settings.updateMultiplier(val);
+        settings.updateMultiplier(amount);
         if (_parsedItems.isNotEmpty) {
           setState(() {
             for (final item in _parsedItems) {
               if (!item.isMultiplierCustomized) {
-                item.multiplier = val;
+                item.baseAmount = settings.getPlayTypeAmount(item.playType);
+                item.multiplier = item.baseAmount > 0 ? amount / item.baseAmount : 1.0;
               }
-              item.baseAmount = settings.getPlayTypeAmount(item.playType);
             }
           });
         }
@@ -71,16 +71,20 @@ class _EntryPageState extends State<EntryPage> {
     _debounce = Timer(const Duration(milliseconds: 300), () {
       if (!mounted) return;
       final settings = Provider.of<SettingsProvider>(context, listen: false);
+      final perBetAmount = double.tryParse(_multiplierController.text) ?? 2.0;
       setState(() {
-        _parsedItems = BatchParser.parse(value, forcePlayType: _selectedPlayType == 'auto' ? null : _selectedPlayType, defaultMultiplier: _getDefaultMultiplier());
+        _parsedItems = BatchParser.parse(value, forcePlayType: _selectedPlayType == 'auto' ? null : _selectedPlayType, defaultMultiplier: 1.0);
         for (final item in _parsedItems) {
           item.baseAmount = settings.getPlayTypeAmount(item.playType);
+          if (!item.isMultiplierCustomized && (item.multiplier - 1.0).abs() < 0.001) {
+            item.multiplier = item.baseAmount > 0 ? perBetAmount / item.baseAmount : 1.0;
+          } else if (!item.isMultiplierCustomized) {
+            item.isMultiplierCustomized = true;
+          }
         }
       });
     });
   }
-
-  double _getDefaultMultiplier() => double.tryParse(_multiplierController.text) ?? 1.0;
 
   int get _totalBetCount => _parsedItems.length;
 
@@ -159,8 +163,12 @@ class _EntryPageState extends State<EntryPage> {
               setState(() {
                 _selectedPlayType = code;
                 final settings = Provider.of<SettingsProvider>(context, listen: false);
+                final perBetAmount = double.tryParse(_multiplierController.text) ?? 2.0;
                 for (final item in _parsedItems) {
                   item.baseAmount = settings.getPlayTypeAmount(item.playType);
+                  if (!item.isMultiplierCustomized) {
+                    item.multiplier = item.baseAmount > 0 ? perBetAmount / item.baseAmount : 1.0;
+                  }
                 }
               });
             }),
@@ -170,10 +178,7 @@ class _EntryPageState extends State<EntryPage> {
             _buildMultiplierSection(),
             const SizedBox(height: 12),
             PreviewList(items: _parsedItems, onItemUpdated: (index, item) {
-              setState(() {
-                final settings = Provider.of<SettingsProvider>(context, listen: false);
-                item.baseAmount = settings.getPlayTypeAmount(item.playType);
-              });
+              setState(() {});
             }),
             if (_parsedItems.isNotEmpty) ...[
               const SizedBox(height: 8),
@@ -249,11 +254,11 @@ class _EntryPageState extends State<EntryPage> {
       decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(AppStyles.radiusSm), boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 4)]),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          const Text('默认倍数', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+          const Text('每注金额(元)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
           SizedBox(width: 80, height: 36, child: TextField(controller: _multiplierController, keyboardType: const TextInputType.numberWithOptions(decimal: true), textAlign: TextAlign.center, decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), isDense: true))),
         ]),
         const SizedBox(height: 10),
-        Wrap(spacing: 6, runSpacing: 6, children: ['1', '2', '5', '10', '0.1'].map((m) => ActionChip(label: Text('${m}x'), labelStyle: const TextStyle(fontSize: 12), onPressed: () => _multiplierController.text = m)).toList()),
+        Wrap(spacing: 6, runSpacing: 6, children: ['2', '5', '10', '0.1', '0.2', '0.05'].map((m) => ActionChip(label: Text('${m}元'), labelStyle: const TextStyle(fontSize: 12), onPressed: () => _multiplierController.text = m)).toList()),
       ]),
     );
   }
