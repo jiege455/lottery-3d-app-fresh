@@ -12,6 +12,7 @@ import 'widgets/batch_input.dart';
 import 'widgets/preview_list.dart';
 import 'widgets/bet_history_list.dart';
 import '../../widgets/toast.dart';
+import '../../core/constants/play_types.dart';
 
 class EntryPage extends StatefulWidget {
   const EntryPage({super.key});
@@ -52,16 +53,16 @@ class _EntryPageState extends State<EntryPage> {
       try {
         final settings = Provider.of<SettingsProvider>(context, listen: false);
         settings.updateMultiplier(amount);
-        if (_parsedItems.isNotEmpty) {
-          setState(() {
+        setState(() {
+          if (_parsedItems.isNotEmpty) {
             for (final item in _parsedItems) {
               if (!item.isMultiplierCustomized) {
                 item.baseAmount = settings.getPlayTypeAmount(item.playType);
                 item.multiplier = item.baseAmount > 0 ? amount / item.baseAmount : 1.0;
               }
             }
-          });
-        }
+          }
+        });
       } catch (_) {}
     }
   }
@@ -248,6 +249,18 @@ class _EntryPageState extends State<EntryPage> {
   }
 
   Widget _buildMultiplierSection() {
+    final perBetAmount = double.tryParse(_multiplierController.text) ?? 2.0;
+    String amountHint = '';
+    if (_selectedPlayType != 'auto') {
+      final config = PlayTypes.getByCode(_selectedPlayType);
+      if (config != null) {
+        final base = config.baseAmount;
+        final multiplier = base > 0 ? perBetAmount / base : 1.0;
+        amountHint = '(${multiplier.toStringAsFixed(2)}倍)';
+      }
+    } else {
+      amountHint = '(倍数根据玩法自动计算)';
+    }
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
@@ -255,7 +268,13 @@ class _EntryPageState extends State<EntryPage> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           const Text('每注金额(元)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-          SizedBox(width: 80, height: 36, child: TextField(controller: _multiplierController, keyboardType: const TextInputType.numberWithOptions(decimal: true), textAlign: TextAlign.center, decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), isDense: true))),
+          Row(
+            children: [
+              SizedBox(width: 80, height: 36, child: TextField(controller: _multiplierController, keyboardType: const TextInputType.numberWithOptions(decimal: true), textAlign: TextAlign.center, decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), isDense: true))),
+              const SizedBox(width: 8),
+              Text(amountHint, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            ],
+          ),
         ]),
         const SizedBox(height: 10),
         Wrap(spacing: 6, runSpacing: 6, children: ['2', '5', '10', '0.1', '0.2', '0.05'].map((m) => ActionChip(label: Text('${m}元'), labelStyle: const TextStyle(fontSize: 12), onPressed: () => _multiplierController.text = m)).toList()),
