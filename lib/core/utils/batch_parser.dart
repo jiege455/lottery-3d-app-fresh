@@ -464,7 +464,7 @@ class BatchParser {
       final danDigit = match.group(1)!;
       final tuoDigits = match.group(2)!.split('').toSet().toList()..sort();
       final typeHint = match.group(3)!;
-      final multStr = match.group(4);
+      final multStr = match.group(4) ?? '';
       final moneySuffix = match.group(5);
 
       final tuoCount = tuoDigits.length;
@@ -472,20 +472,6 @@ class BatchParser {
         normalLines.add(trimmed);
         continue;
       }
-
-      double? mult;
-      if (multStr != null && multStr.isNotEmpty) {
-        final cleaned = multStr.replaceFirst(RegExp(r'^[*×xX]'), '');
-        if (cleaned.isNotEmpty) {
-          final parsed = double.tryParse(cleaned);
-          if (parsed != null) {
-            final hasExplicitMult = multStr.startsWith(RegExp(r'[*×xX]'));
-            final isMoney = moneySuffix != null || (!hasExplicitMult && parsed >= 10);
-            mult = isMoney ? parsed / 10 : parsed;
-          }
-        }
-      }
-      final effectiveMult = mult ?? defaultMultiplier;
 
       String playTypeCode;
       if (typeHint == '六' || typeHint == '6') {
@@ -500,6 +486,8 @@ class BatchParser {
         normalLines.add(trimmed);
         continue;
       }
+
+      final effectiveMult = _calcMoneyMultiplier(multStr, moneySuffix, config.baseAmount);
 
       hasDanTuo = true;
       final numberStr = '$danDigit:${tuoDigits.join()}';
@@ -552,30 +540,17 @@ class BatchParser {
       }
 
       final digits = match.group(1)!;
-      final multStr = match.group(2);
+      final multStr = match.group(2) ?? '';
       final moneySuffix = match.group(3);
 
-      double? mult;
-      if (multStr != null && multStr.isNotEmpty) {
-        final cleaned = multStr.replaceFirst(RegExp(r'^[*×xX]'), '');
-        if (cleaned.isNotEmpty) {
-          final parsed = double.tryParse(cleaned);
-          if (parsed != null) {
-            final hasExplicitMult = multStr.startsWith(RegExp(r'[*×xX]'));
-            final isMoney = moneySuffix != null || (!hasExplicitMult && parsed >= 10);
-            mult = isMoney ? parsed / 10 : parsed;
-          }
-        }
-      }
-      final effectiveMult = mult ?? defaultMultiplier;
-
       final isSameDigit = digits[0] == digits[1];
-      final playTypeCode = isSameDigit ? 'shuangfei_g3' : 'shuangfei_g6';
-      final config = PlayTypes.getByCode(playTypeCode);
+      final config = PlayTypes.getByCode(isSameDigit ? 'shuangfei_g3' : 'shuangfei_g6');
       if (config == null) {
         normalLines.add(trimmed);
         continue;
       }
+
+      final effectiveMult = _calcMoneyMultiplier(multStr, moneySuffix, config.baseAmount);
 
       hasShuangFei = true;
       results.add(ParsedItem(
@@ -832,26 +807,8 @@ class BatchParser {
 
     final digits = match.group(1)!;
     final typeHint = match.group(2);
-    final multStr = match.group(3);
+    final multStr = match.group(3) ?? '';
     final moneySuffix = match.group(4);
-
-    double? mult;
-    if (multStr != null && multStr.isNotEmpty) {
-      final cleaned = multStr.replaceFirst(RegExp(r'^[*×xX]'), '');
-      if (cleaned.isNotEmpty) {
-        final parsed = double.tryParse(cleaned);
-        if (parsed != null) {
-          final hasExplicitMult = multStr.startsWith(RegExp(r'[*×xX]'));
-          final isMoney = moneySuffix != null || (!hasExplicitMult && parsed >= 10);
-          if (isMoney) {
-            mult = parsed / 10;
-          } else {
-            mult = parsed;
-          }
-        }
-      }
-    }
-    final effectiveMultiplier = mult ?? defaultMultiplier;
 
     final uniqueDigits = digits.split('').toSet().toList()..sort();
     final count = uniqueDigits.length;
@@ -884,6 +841,8 @@ class BatchParser {
 
     final config = PlayTypes.getByCode(playTypeCode);
     if (config == null) return [];
+
+    final effectiveMultiplier = _calcMoneyMultiplier(multStr, moneySuffix, config.baseAmount);
 
     return [ParsedItem(
       number: uniqueDigits.join(),
