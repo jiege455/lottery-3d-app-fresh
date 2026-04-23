@@ -554,7 +554,7 @@ class DatabaseHelper {
       if (lotteryType != null) {
         query += ' WHERE lottery_type = ?';
       }
-      query += ' GROUP BY play_type ORDER BY count DESC';
+      query += ' GROUP BY play_type, play_type_name ORDER BY count DESC';
       final result = await db.rawQuery(query, lotteryType != null ? [lotteryType] : null);
       Map<String, Map<String, dynamic>> stats = {};
       for (final row in result) {

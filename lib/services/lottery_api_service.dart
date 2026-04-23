@@ -35,9 +35,10 @@ class LotteryApiService {
       for (var item in list) {
         if (item is Map) {
           final issue = (item['code'] ?? '').toString();
-          final one = item['one'] ?? 0;
-          final two = item['two'] ?? 0;
-          final three = item['three'] ?? 0;
+          final one = (item['one'] ?? '0').toString();
+          final two = (item['two'] ?? '0').toString();
+          final three = (item['three'] ?? '0').toString();
+
           final openTime = (item['open_time'] ?? '').toString();
 
           final numbers = '$one$two$three';

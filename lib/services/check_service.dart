@@ -76,7 +76,10 @@ class CheckService {
   };
 
   static List<CheckResult> checkAll(List<BetRecord> bets, DrawRecord draw, [Map<String, double>? customWinAmounts]) {
-    return bets.map((bet) => checkSingle(bet, draw, customWinAmounts?[bet.playType] ?? 0.0)).toList();
+    return bets.map((bet) {
+      final customAmount = customWinAmounts?[bet.playType] ?? 0.0;
+      return checkSingle(bet, draw, customAmount);
+    }).toList();
   }
 
   static CheckResult checkSingle(BetRecord bet, DrawRecord draw, [double customWinAmount = 0.0]) {

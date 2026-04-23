@@ -55,12 +55,13 @@ class DrawRecord {
 
   static int getSumValue(String numbers) {
     if (numbers.length != 3) return 0;
-    return numbers.split('').map(int.parse).reduce((a, b) => a + b);
+    return numbers.split('').map((c) => int.tryParse(c) ?? 0).reduce((a, b) => a + b);
   }
 
   static int getSpan(String numbers) {
     if (numbers.length != 3) return 0;
-    final digits = numbers.split('').map(int.parse).toList();
+    final digits = numbers.split('').map((c) => int.tryParse(c) ?? 0).toList();
+    if (digits.length < 3) return 0;
     final maxDigit = digits.reduce((a, b) => a > b ? a : b);
     final minDigit = digits.reduce((a, b) => a < b ? a : b);
     return maxDigit - minDigit;

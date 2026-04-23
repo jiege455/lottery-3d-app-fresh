@@ -289,11 +289,10 @@ class PlayTypes {
   ];
 
   static PlayTypeConfig? getByCode(String code) {
-    try {
-      return all.firstWhere((p) => p.code == code);
-    } catch (_) {
-      return null;
+    for (final pt in all) {
+      if (pt.code == code) return pt;
     }
+    return null;
   }
 
   static List<PlayTypeConfig> getByCategory(String category) {

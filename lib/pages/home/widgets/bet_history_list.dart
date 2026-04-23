@@ -218,11 +218,9 @@ class _BetHistoryListState extends State<BetHistoryList> {
                         if (bet.id == null) return const SizedBox.shrink();
                         final ctl = editControllers[bet.id]!;
                         Color playColor = AppColors.primary;
-                        try {
-                          final pt = PlayTypes.all.firstWhere((p) => p.code == bet.playType, orElse: () => PlayTypes.all.first);
-                          final colorKey = PlayTypes.categoryColorKey[pt.category] ?? 'basic';
-                          playColor = AppColors.playTypeColors[colorKey] ?? AppColors.primary;
-                        } catch (_) {}
+                        final pt = PlayTypes.all.firstWhere((p) => p.code == bet.playType, orElse: () => PlayTypes.all.first);
+                        final colorKey = PlayTypes.categoryColorKey[pt.category] ?? 'basic';
+                        playColor = AppColors.playTypeColors[colorKey] ?? AppColors.primary;
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 6),
                           child: Row(
@@ -574,11 +572,9 @@ class _BetHistoryListState extends State<BetHistoryList> {
             runSpacing: 4,
             children: playTypeSet.map((code) {
               Color tagColor = AppColors.primary;
-              try {
-                final pt = PlayTypes.all.firstWhere((p) => p.code == code, orElse: () => PlayTypes.all.first);
-                final colorKey = PlayTypes.categoryColorKey[pt.category] ?? 'basic';
-                tagColor = AppColors.playTypeColors[colorKey] ?? AppColors.primary;
-              } catch (_) {}
+              final pt = PlayTypes.all.firstWhere((p) => p.code == code, orElse: () => PlayTypes.all.first);
+              final colorKey = PlayTypes.categoryColorKey[pt.category] ?? 'basic';
+              tagColor = AppColors.playTypeColors[colorKey] ?? AppColors.primary;
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
@@ -603,11 +599,9 @@ class _BetHistoryListState extends State<BetHistoryList> {
                 runSpacing: 4,
                 children: displayBets.map((bet) {
                   Color playColor = AppColors.primary;
-                  try {
-                    final pt = PlayTypes.all.firstWhere((p) => p.code == bet.playType, orElse: () => PlayTypes.all.first);
-                    final colorKey = PlayTypes.categoryColorKey[pt.category] ?? 'basic';
-                    playColor = AppColors.playTypeColors[colorKey] ?? AppColors.primary;
-                  } catch (_) {}
+                  final pt = PlayTypes.all.firstWhere((p) => p.code == bet.playType, orElse: () => PlayTypes.all.first);
+                  final colorKey = PlayTypes.categoryColorKey[pt.category] ?? 'basic';
+                  playColor = AppColors.playTypeColors[colorKey] ?? AppColors.primary;
                   final isSelected = _isSelectMode && bet.id != null && _selectedIds.contains(bet.id);
                   return GestureDetector(
                     onLongPress: () => _showEditDialog(bet),

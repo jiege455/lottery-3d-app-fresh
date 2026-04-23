@@ -1150,7 +1150,9 @@ class BatchParser {
 
   static double? _extractMultiplier(String text) {
     final match = _multiplierRegex.firstMatch(text);
-    return match != null ? double.parse(match.group(1)!) : null;
+    if (match == null) return null;
+    final parsed = double.tryParse(match.group(1)!);
+    return parsed != null && parsed >= 0 ? parsed : null;
   }
 
   static ParsedItem _createItem(String number, PlayTypeConfig config, double multiplier) {

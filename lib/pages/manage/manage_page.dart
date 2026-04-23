@@ -94,8 +94,9 @@ class _ManagePageState extends State<ManagePage> {
           await Share.shareXFiles([XFile(file.path)], text: '福彩3D助手数据备份 - ${DateTime.now().toString().substring(0, 10)}');
 
           if (!mounted) return;
-          await Provider.of<SettingsProvider>(context, listen: false).updateBackupTime(DateTime.now().toIso8601String());
-          ToastUtil.success(context, '备份成功');
+          final backupTime = DateTime.now().toIso8601String();
+          await Provider.of<SettingsProvider>(context, listen: false).updateBackupTime(backupTime);
+          if (mounted) ToastUtil.success(context, '备份成功');
         } catch (e) {
           if (mounted) ToastUtil.error(context, '备份失败: $e');
         }

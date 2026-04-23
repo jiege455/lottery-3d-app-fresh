@@ -135,12 +135,18 @@ class _EntryPageState extends State<EntryPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final settings = Provider.of<SettingsProvider>(context);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     if (!_syncedMultiplier || _multiplierController.text.isEmpty) {
+      final settings = Provider.of<SettingsProvider>(context, listen: false);
       _syncedMultiplier = true;
       _multiplierController.text = settings.defaultMultiplier.toString();
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = Provider.of<SettingsProvider>(context);
 
     return SafeArea(
       child: SingleChildScrollView(
