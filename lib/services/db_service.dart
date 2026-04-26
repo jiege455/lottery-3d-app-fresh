@@ -4,6 +4,7 @@ import 'dart:async';
 import '../models/bet_record.dart';
 import '../models/draw_record.dart';
 import '../models/app_settings.dart';
+import '../models/template_record.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -34,7 +35,7 @@ class DatabaseHelper {
   Future<Database> _initDB(String filePath) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
-    return await openDatabase(path, version: 4, onCreate: _onCreate, onUpgrade: _onUpgrade);
+    return await openDatabase(path, version: 5, onCreate: _onCreate, onUpgrade: _onUpgrade);
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -87,7 +88,33 @@ class DatabaseHelper {
         win_amount REAL DEFAULT 0.0
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE custom_format_rules (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        template TEXT NOT NULL,
+        play_type_code TEXT NOT NULL,
+        default_multiplier REAL DEFAULT 1.0,
+        enabled INTEGER DEFAULT 1,
+        create_time TEXT NOT NULL
+      )
+    ''');
+
     await db.insert('settings', {'id': 1, 'default_multiplier': 2.0, 'default_lottery_type': 1, 'last_backup_time': ''}, conflictAlgorithm: ConflictAlgorithm.replace);
+
+    await db.execute('''
+      CREATE TABLE templates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        content TEXT NOT NULL,
+        play_type TEXT DEFAULT 'auto',
+        play_type_name TEXT DEFAULT '自动识别',
+        default_multiplier TEXT DEFAULT '2',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -137,6 +164,36 @@ class DatabaseHelper {
         }
       } catch (e) {
         print('Database upgrade v4 error: $e');
+      }
+    }
+    if (oldVersion < 5) {
+      try {
+        await _createTableIfNotExists(db, 'templates', '''
+          CREATE TABLE templates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            content TEXT NOT NULL,
+            play_type TEXT DEFAULT 'auto',
+            play_type_name TEXT DEFAULT '自动识别',
+            default_multiplier TEXT DEFAULT '2',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+          )
+        ''');
+        await db.execute('DROP TABLE IF EXISTS custom_format_rules');
+        await db.execute('''
+          CREATE TABLE custom_format_rules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            template TEXT NOT NULL,
+            play_type_code TEXT NOT NULL,
+            default_multiplier REAL DEFAULT 1.0,
+            enabled INTEGER DEFAULT 1,
+            create_time TEXT NOT NULL
+          )
+        ''');
+      } catch (e) {
+        print('Database upgrade v5 error: $e');
       }
     }
   }
@@ -678,6 +735,70 @@ class DatabaseHelper {
       await db.delete('play_type_amounts');
     } catch (e) {
       print('resetPlayTypeAmounts error: $e');
+    }
+  }
+
+  Future<List<TemplateRecord>> getAllTemplates() async {
+    try {
+      final db = await database;
+      final result = await db.query('templates', orderBy: 'updated_at DESC');
+      return result.map((e) => TemplateRecord.fromMap(e)).toList();
+    } catch (e) {
+      print('getAllTemplates error: $e');
+      return [];
+    }
+  }
+
+  Future<int> insertTemplate(TemplateRecord template) async {
+    try {
+      final db = await database;
+      return await db.insert('templates', template.toMap());
+    } catch (e) {
+      print('insertTemplate error: $e');
+      return -1;
+    }
+  }
+
+  Future<int> updateTemplate(TemplateRecord template) async {
+    try {
+      if (template.id == null) return 0;
+      final db = await database;
+      return await db.update('templates', template.toMap(), where: 'id = ?', whereArgs: [template.id]);
+    } catch (e) {
+      print('updateTemplate error: $e');
+      return 0;
+    }
+  }
+
+  Future<int> deleteTemplate(int id) async {
+    try {
+      final db = await database;
+      return await db.delete('templates', where: 'id = ?', whereArgs: [id]);
+    } catch (e) {
+      print('deleteTemplate error: $e');
+      return 0;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getCustomFormatRules() async {
+    try {
+      final db = await database;
+      return await db.query('custom_format_rules', orderBy: 'create_time DESC');
+    } catch (e) {
+      print('getCustomFormatRules error: $e');
+      return [];
+    }
+  }
+
+  Future<void> saveCustomFormatRules(List<Map<String, dynamic>> rules) async {
+    try {
+      final db = await database;
+      await db.delete('custom_format_rules');
+      for (final rule in rules) {
+        await db.insert('custom_format_rules', rule);
+      }
+    } catch (e) {
+      print('saveCustomFormatRules error: $e');
     }
   }
 

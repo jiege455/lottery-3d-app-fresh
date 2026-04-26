@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/app_settings.dart';
 import '../services/db_service.dart';
 import '../core/constants/play_types.dart';
+import '../core/utils/custom_format.dart';
 
 class SettingsProvider with ChangeNotifier {
   final DatabaseHelper _db = DatabaseHelper.instance;
@@ -106,6 +107,25 @@ class SettingsProvider with ChangeNotifier {
     } catch (e) {
       print('SettingsProvider.resetPlayTypeAmounts error: $e');
       notifyListeners();
+    }
+  }
+
+  Future<List<CustomFormatRule>> loadCustomFormatRules() async {
+    try {
+      final rows = await _db.getCustomFormatRules();
+      return rows.map((r) => CustomFormatRule.fromMap(r)).toList();
+    } catch (e) {
+      print('SettingsProvider.loadCustomFormatRules error: $e');
+      return [];
+    }
+  }
+
+  Future<void> saveCustomFormatRules(List<CustomFormatRule> rules) async {
+    try {
+      final rows = rules.map((r) => r.toMap()).toList();
+      await _db.saveCustomFormatRules(rows);
+    } catch (e) {
+      print('SettingsProvider.saveCustomFormatRules error: $e');
     }
   }
 }

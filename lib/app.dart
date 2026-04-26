@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/bet_provider.dart';
 import 'providers/settings_provider.dart';
+import 'providers/template_provider.dart';
 import 'pages/home/entry_page.dart' as entry;
 import 'pages/filter/filter_page.dart' as filter;
 import 'pages/stats/stats_page.dart' as stats;
@@ -18,6 +19,7 @@ class Lottery3DApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => BetProvider()),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
+        ChangeNotifierProvider(create: (_) => TemplateProvider()),
       ],
       child: MaterialApp(
         title: '福彩 3D 助手',

@@ -6,6 +6,8 @@ import '../../core/utils/batch_parser.dart';
 import '../../models/bet_record.dart';
 import '../../providers/bet_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/template_provider.dart';
+import '../../models/template_record.dart';
 import 'widgets/play_type_chips.dart';
 import 'widgets/rule_hint_box.dart';
 import 'widgets/batch_input.dart';
@@ -41,6 +43,7 @@ class _EntryPageState extends State<EntryPage> {
   void _initData() {
     try {
       Provider.of<SettingsProvider>(context, listen: false).loadSettings();
+      Provider.of<TemplateProvider>(context, listen: false).loadTemplates();
     } catch (e) {
       print('EntryPage._initData error: $e');
     }
@@ -126,6 +129,197 @@ class _EntryPageState extends State<EntryPage> {
     }
   }
 
+  void _saveAsTemplate() {
+    final inputText = _inputController.text.trim();
+    if (inputText.isEmpty) {
+      ToastUtil.warning(context, '请先输入投注内容');
+      return;
+    }
+    final nameCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('保存为模板'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              decoration: const InputDecoration(
+                hintText: '输入模板名称（如：快手直选模板）',
+                labelText: '模板名称',
+              ),
+              autofocus: true,
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('模板内容:', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                  const SizedBox(height: 4),
+                  Text(inputText, style: const TextStyle(fontSize: 12, fontFamily: 'monospace'), maxLines: 3, overflow: TextOverflow.ellipsis),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final name = nameCtrl.text.trim();
+              if (name.isEmpty) {
+                ToastUtil.warning(context, '请输入模板名称');
+                return;
+              }
+              Navigator.pop(ctx);
+              final template = TemplateRecord(
+                name: name,
+                content: inputText,
+                playType: _selectedPlayType,
+                playTypeName: _selectedPlayType == 'auto' ? '自动识别' : (PlayTypes.getByCode(_selectedPlayType)?.name ?? '自动识别'),
+                defaultMultiplier: _multiplierController.text,
+              );
+              await Provider.of<TemplateProvider>(context, listen: false).addTemplate(template);
+              if (mounted) ToastUtil.success(context, '模板已保存');
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _applyTemplate(TemplateRecord template) {
+    _inputController.text = template.content;
+    if (template.playType != 'auto') {
+      _selectedPlayType = template.playType;
+    }
+    _multiplierController.text = template.defaultMultiplier;
+    _onInputChanged(template.content);
+    if (mounted) setState(() {});
+    ToastUtil.success(context, '已加载模板: ${template.name}');
+  }
+
+  void _manageTemplates() {
+    final templates = Provider.of<TemplateProvider>(context, listen: false).templates;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.3,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (_, scrollController) => Column(
+          children: [
+            Container(margin: const EdgeInsets.symmetric(vertical: 10), width: 40, height: 4, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2))),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('管理模板', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                  Text('${templates.length} 个模板', style: TextStyle(fontSize: 12, color: AppColors.textLight)),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: templates.isEmpty
+                  ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.bookmark_outline, size: 48, color: AppColors.textLight),
+                      const SizedBox(height: 12),
+                      Text('暂无模板', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+                      const SizedBox(height: 4),
+                      Text('输入内容后可保存为模板', style: TextStyle(fontSize: 12, color: AppColors.textLight)),
+                    ]))
+                  : ListView.builder(
+                      controller: scrollController,
+                      padding: const EdgeInsets.all(16),
+                      itemCount: templates.length,
+                      itemBuilder: (_, index) {
+                        final t = templates[index];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.card,
+                            borderRadius: BorderRadius.circular(AppStyles.radiusXs),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(children: [
+                                      Text(t.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                      const SizedBox(width: 6),
+                                      Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1), decoration: BoxDecoration(color: AppColors.primary.withAlpha(26), borderRadius: BorderRadius.circular(4)), child: Text(t.playTypeName, style: TextStyle(fontSize: 9, color: AppColors.primary))),
+                                    ]),
+                                    const SizedBox(height: 4),
+                                    Text(t.content, style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: AppColors.textSecondary), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                  ],
+                                ),
+                              ),
+                              PopupMenuButton<String>(
+                                icon: const Icon(Icons.more_vert, size: 20),
+                                onSelected: (action) async {
+                                  if (action == 'apply') {
+                                    Navigator.pop(ctx);
+                                    _applyTemplate(t);
+                                  } else if (action == 'delete') {
+                                    Navigator.pop(ctx);
+                                    showDialog(
+                                      context: context,
+                                      builder: (dctx) => AlertDialog(
+                                        title: const Text('删除模板'),
+                                        content: Text('确认删除模板"${t.name}"？'),
+                                        actions: [
+                                          TextButton(onPressed: () => Navigator.pop(dctx), child: const Text('取消')),
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+                                            onPressed: () async {
+                                              Navigator.pop(dctx);
+                                              if (t.id != null) {
+                                                await Provider.of<TemplateProvider>(context, listen: false).deleteTemplate(t.id!);
+                                              }
+                                            },
+                                            child: const Text('删除'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }
+                                },
+                                itemBuilder: (_) => [
+                                  const PopupMenuItem(value: 'apply', child: Row(children: [Icon(Icons.play_arrow, size: 18), SizedBox(width: 8), Text('使用模板')])),
+                                  const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete, size: 18, color: AppColors.danger), SizedBox(width: 8), Text('删除', style: TextStyle(color: AppColors.danger))])),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _debounce?.cancel();
@@ -146,8 +340,6 @@ class _EntryPageState extends State<EntryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = Provider.of<SettingsProvider>(context);
-
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.only(bottom: 100),
@@ -165,6 +357,8 @@ class _EntryPageState extends State<EntryPage> {
               ),
             ),
             _buildLotterySwitcher(),
+            const SizedBox(height: 4),
+            _buildTemplateBar(),
             const SizedBox(height: 4),
             PlayTypeChips(selectedPlayType: _selectedPlayType, onChanged: (code) {
               setState(() {
@@ -222,6 +416,37 @@ class _EntryPageState extends State<EntryPage> {
             Text('${_totalAmount.toStringAsFixed(2)} 元', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.danger)),
             Text('总金额', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
           ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTemplateBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: _saveAsTemplate,
+              icon: const Icon(Icons.bookmark_add, size: 16),
+              label: const Text('保存为模板', style: TextStyle(fontSize: 12)),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: _manageTemplates,
+              icon: const Icon(Icons.bookmark, size: 16),
+              label: const Text('管理模板', style: TextStyle(fontSize: 12)),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+              ),
+            ),
+          ),
         ],
       ),
     );
