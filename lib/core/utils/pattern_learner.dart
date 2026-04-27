@@ -37,10 +37,13 @@ class PatternLearner {
       },
     );
 
-    // 5. 转义正则特殊字符
+    // 5. 转义正则特殊字符（注意：这里不能使用字符串插值，因为会产生歧义）
     pattern = pattern.replaceAllMapped(
-      RegExp(r'[.+^${}()|[\]\\]'),
-      (match) => '\\${match.group(0)}',
+      RegExp(r'[.+^$()|[\]\\]'),
+      (match) {
+        final ch = match.group(0)!;
+        return '\\$ch';
+      },
     );
 
     // 6. 将占位符还原为非捕获组或命名组

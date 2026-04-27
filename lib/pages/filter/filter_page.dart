@@ -100,7 +100,7 @@ class _FilterPageState extends State<FilterPage> {
     }
 
     if (filteredResults.isEmpty) {
-      ToastUtil.warning(context, '没有符合条件的${config.name}号码');
+      if (mounted) ToastUtil.warning(context, '没有符合条件的${config.name}号码');
       return;
     }
 
@@ -404,7 +404,7 @@ class _FilterPageState extends State<FilterPage> {
               return ChoiceChip(
                 label: Text(label),
                 selected: selected,
-                onSelected: (_) => setState(() => _formType = selected ? null : type),
+                onSelected: (_) => setState(() => _formType = selected ? '' : type),
               );
             }).toList(),
           ),
@@ -512,14 +512,16 @@ class _FilterPageState extends State<FilterPage> {
           height: 36,
           child: TextField(
             keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
             decoration: InputDecoration(
-              hintText: selected != null ? '$selected' : '-',
+              hintText: '-',
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               filled: true,
               fillColor: AppColors.primaryLight,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
             ),
+            controller: selected != null ? TextEditingController(text: '$selected') : null,
             onChanged: (v) {
               final val = int.tryParse(v);
               if (val != null && val >= 0 && val <= 9) {
