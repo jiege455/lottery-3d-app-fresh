@@ -10,6 +10,7 @@ import 'pages/filter/filter_page.dart' as filter;
 import 'pages/stats/stats_page.dart' as stats;
 import 'pages/check/check_page.dart' as check;
 import 'pages/manage/manage_page.dart' as manage;
+import 'pages/pattern/pattern_manage_page.dart' as pattern;
 
 class Lottery3DApp extends StatelessWidget {
   const Lottery3DApp({super.key});
@@ -110,6 +111,7 @@ class _MainScaffoldState extends State<MainScaffold> {
           BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: '统计'),
           BottomNavigationBarItem(icon: Icon(Icons.verified_outlined), label: '校验'),
           BottomNavigationBarItem(icon: Icon(Icons.folder_open), label: '管理'),
+          BottomNavigationBarItem(icon: Icon(Icons.psychology), label: '识别'),
         ],
       ),
     );
@@ -128,6 +130,8 @@ class _MainScaffoldState extends State<MainScaffold> {
           return const check.CheckPage();
         case 4:
           return const manage.ManagePage();
+        case 5:
+          return const pattern.PatternManagePage();
         default:
           return const entry.EntryPage();
       }
