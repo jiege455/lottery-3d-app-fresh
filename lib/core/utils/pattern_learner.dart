@@ -38,14 +38,12 @@ class PatternLearner {
       },
     );
 
-    // 4. 提取多位数字（倍数、金额）→ 标记为 {NUM}
+    // 4. 提取剩余数字（倍数、金额）→ 标记为 {NUM}
+    // 注意：步骤1-3已经替换了大部分数字，这里只处理剩余的
     text = text.replaceAllMapped(
       RegExp(r'\d+\.?\d*'),
       (match) {
-        final num = match.group(0)!;
-        if (num.length >= 1) {
-          keywords.add('{NUM}');
-        }
+        keywords.add('{NUM}');
         return '__NUM__';
       },
     );
@@ -107,7 +105,7 @@ class PatternLearner {
   }
 
   /// 从样本生成 LearnedPattern
-  /// pattern 字段现在存储关键词列表的 JSON 字符串
+  /// pattern 字段现在存储关键词列表的逗号分隔字符串
   static LearnedPattern learn(String sample, String playType, String playTypeName) {
     final keywords = extractKeywords(sample);
     return LearnedPattern(
@@ -120,8 +118,8 @@ class PatternLearner {
   }
 
   /// 尝试用学习到的模式匹配文本
-  /// 使用相似度匹配，返回匹配结果，不匹配返回null
-  static ParsedItem? tryMatch(String line, LearnedPattern learned, {double defaultMultiplier = 1.0}) {
+  /// 返回匹配结果和相似度，不匹配返回null
+  static ({ParsedItem item, double similarity})? tryMatchWithSimilarity(String line, LearnedPattern learned, {double defaultMultiplier = 1.0}) {
     try {
       final inputKeywords = extractKeywords(line.trim());
       final patternKeywords = learned.pattern.split(',').where((s) => s.isNotEmpty).toList();
@@ -130,8 +128,8 @@ class PatternLearner {
 
       final similarity = calculateSimilarity(inputKeywords, patternKeywords);
 
-      // 相似度阈值：0.6（60%）认为匹配
-      if (similarity < 0.6) return null;
+      // 相似度阈值：0.5（50%）认为匹配，更宽松
+      if (similarity < 0.5) return null;
 
       // 提取号码（找3位数字）
       String? number;
@@ -176,7 +174,7 @@ class PatternLearner {
       final config = PlayTypes.getByCode(learned.playType);
       if (config == null) return null;
 
-      return ParsedItem(
+      final item = ParsedItem(
         number: number,
         playType: config.code,
         playTypeName: config.name,
@@ -185,10 +183,18 @@ class PatternLearner {
         baseAmount: config.baseAmount,
         isMultiplierCustomized: numStr != null,
       );
+
+      return (item: item, similarity: similarity);
     } catch (e) {
-      print('PatternLearner.tryMatch error: $e');
+      print('PatternLearner.tryMatchWithSimilarity error: $e');
       return null;
     }
+  }
+
+  /// 尝试用学习到的模式匹配文本（兼容旧接口）
+  static ParsedItem? tryMatch(String line, LearnedPattern learned, {double defaultMultiplier = 1.0}) {
+    final result = tryMatchWithSimilarity(line, learned, defaultMultiplier: defaultMultiplier);
+    return result?.item;
   }
 
   /// 批量尝试匹配所有学习到的模式
@@ -196,27 +202,18 @@ class PatternLearner {
   static ParsedItem? tryMatchAll(String line, List<LearnedPattern> patterns, {double defaultMultiplier = 1.0}) {
     if (patterns.isEmpty) return null;
 
-    ParsedItem? bestMatch;
-    double bestSimilarity = 0.0;
-
-    final inputKeywords = extractKeywords(line.trim());
+    ({ParsedItem item, double similarity})? bestMatch;
 
     for (final pattern in patterns) {
-      final patternKeywords = pattern.pattern.split(',').where((s) => s.isNotEmpty).toList();
-      if (patternKeywords.isEmpty) continue;
-
-      final similarity = calculateSimilarity(inputKeywords, patternKeywords);
-
-      if (similarity >= 0.6 && similarity > bestSimilarity) {
-        final result = tryMatch(line, pattern, defaultMultiplier: defaultMultiplier);
-        if (result != null) {
+      final result = tryMatchWithSimilarity(line, pattern, defaultMultiplier: defaultMultiplier);
+      if (result != null) {
+        if (bestMatch == null || result.similarity > bestMatch.similarity) {
           bestMatch = result;
-          bestSimilarity = similarity;
         }
       }
     }
 
-    return bestMatch;
+    return bestMatch?.item;
   }
 
   /// 验证模式是否有效
