@@ -217,9 +217,12 @@ class _PatternManagePageState extends State<PatternManagePage> {
         title: const Text('测试识别'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('案例: ${pattern.sampleText}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
+            Text('关键词: ${pattern.pattern}', style: const TextStyle(fontSize: 10, color: AppColors.textLight)),
+            const SizedBox(height: 12),
             TextField(
               controller: testCtrl,
               decoration: const InputDecoration(
@@ -241,7 +244,11 @@ class _PatternManagePageState extends State<PatternManagePage> {
               if (result != null) {
                 ToastUtil.success(context, '匹配成功！识别为：${result.playTypeName}');
               } else {
-                ToastUtil.warning(context, '未能匹配，文本格式与案例不符');
+                // 显示相似度信息帮助用户理解
+                final inputKeywords = PatternLearner.extractKeywords(testText);
+                final patternKeywords = pattern.pattern.split(',').where((s) => s.isNotEmpty).toList();
+                final similarity = PatternLearner.calculateSimilarity(inputKeywords, patternKeywords);
+                ToastUtil.warning(context, '未能匹配（相似度: ${(similarity * 100).toStringAsFixed(1)}%），文本格式与案例不符');
               }
             },
             child: const Text('测试'),
