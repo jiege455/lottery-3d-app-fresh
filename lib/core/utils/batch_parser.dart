@@ -1,5 +1,7 @@
 import '../constants/play_types.dart';
 import 'package:flutter/material.dart';
+import '../../models/learned_pattern.dart';
+import 'pattern_learner.dart';
 
 class ParsedItem {
   final String number;
@@ -878,8 +880,14 @@ class BatchParser {
     return code.startsWith('zq6_') || code.startsWith('zq3_');
   }
 
-  static List<ParsedItem> parse(String input, {String? forcePlayType, double defaultMultiplier = 1.0}) {
+  static List<ParsedItem> parse(String input, {String? forcePlayType, double defaultMultiplier = 1.0, List<LearnedPattern> learnedPatterns = const []}) {
     if (input.trim().isEmpty) return [];
+
+    // 优先尝试学习到的模式 (用户教过的格式)
+    if (learnedPatterns.isNotEmpty && forcePlayType == null) {
+      final learnedResult = _tryParseLearnedPatterns(input, learnedPatterns, defaultMultiplier: defaultMultiplier);
+      if (learnedResult != null && learnedResult.isNotEmpty) return learnedResult;
+    }
 
     final multiLinePosResult = _tryParseMultiLinePosition(input, forcePlayType: forcePlayType, defaultMultiplier: defaultMultiplier);
     if (multiLinePosResult != null) return multiLinePosResult;
@@ -917,6 +925,37 @@ class BatchParser {
       results.addAll(items);
     }
     return results;
+  }
+
+  static List<ParsedItem>? _tryParseLearnedPatterns(String input, List<LearnedPattern> patterns, {double defaultMultiplier = 1.0}) {
+    final lines = input.split(RegExp(r'[\n\r]')).where((l) => l.trim().isNotEmpty).toList();
+    final results = <ParsedItem>[];
+    final unmatchedLines = <String>[];
+
+    for (final line in lines) {
+      final trimmed = line.trim();
+      final matched = PatternLearner.tryMatchAll(trimmed, patterns, defaultMultiplier: defaultMultiplier);
+      if (matched != null) {
+        results.add(matched);
+      } else {
+        unmatchedLines.add(trimmed);
+      }
+    }
+
+    // 如果所有行都匹配了，返回结果
+    if (unmatchedLines.isEmpty) return results;
+
+    // 如果部分匹配，对未匹配的行使用默认解析
+    if (results.isNotEmpty) {
+      for (final line in unmatchedLines) {
+        final items = _parseLine(line, defaultMultiplier: defaultMultiplier);
+        results.addAll(items);
+      }
+      return results;
+    }
+
+    // 如果一行都没匹配，返回null让后续逻辑处理
+    return null;
   }
 
   static List<ParsedItem> _parseLine(String line, {String? forcePlayType, double defaultMultiplier = 1.0}) {

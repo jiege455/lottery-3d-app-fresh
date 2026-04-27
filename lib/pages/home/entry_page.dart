@@ -7,7 +7,10 @@ import '../../models/bet_record.dart';
 import '../../providers/bet_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/template_provider.dart';
+import '../../providers/learned_pattern_provider.dart';
 import '../../models/template_record.dart';
+import '../../models/learned_pattern.dart';
+import '../../core/utils/pattern_learner.dart';
 import 'widgets/play_type_chips.dart';
 import 'widgets/rule_hint_box.dart';
 import 'widgets/batch_input.dart';
@@ -44,6 +47,7 @@ class _EntryPageState extends State<EntryPage> {
     try {
       Provider.of<SettingsProvider>(context, listen: false).loadSettings();
       Provider.of<TemplateProvider>(context, listen: false).loadTemplates();
+      Provider.of<LearnedPatternProvider>(context, listen: false).loadPatterns();
     } catch (e) {
       print('EntryPage._initData error: $e');
     }
@@ -76,8 +80,9 @@ class _EntryPageState extends State<EntryPage> {
       if (!mounted) return;
       final settings = Provider.of<SettingsProvider>(context, listen: false);
       final perBetAmount = double.tryParse(_multiplierController.text) ?? 2.0;
+      final learnedPatterns = Provider.of<LearnedPatternProvider>(context, listen: false).patterns;
       setState(() {
-        _parsedItems = BatchParser.parse(value, forcePlayType: _selectedPlayType == 'auto' ? null : _selectedPlayType, defaultMultiplier: 1.0);
+        _parsedItems = BatchParser.parse(value, forcePlayType: _selectedPlayType == 'auto' ? null : _selectedPlayType, defaultMultiplier: 1.0, learnedPatterns: learnedPatterns);
         for (final item in _parsedItems) {
           item.baseAmount = settings.getPlayTypeAmount(item.playType);
           if (!item.isMultiplierCustomized && (item.multiplier - 1.0).abs() < 0.001) {
@@ -208,6 +213,107 @@ class _EntryPageState extends State<EntryPage> {
     _onInputChanged(template.content);
     if (mounted) setState(() {});
     ToastUtil.success(context, '已加载模板: ${template.name}');
+  }
+
+  void _showLearnPatternDialog() {
+    final inputText = _inputController.text.trim();
+    if (inputText.isEmpty) {
+      ToastUtil.warning(context, '请先输入一段投注文本');
+      return;
+    }
+
+    // 取第一行非空文本作为样本
+    final lines = inputText.split('\n').where((l) => l.trim().isNotEmpty).toList();
+    final sample = lines.isNotEmpty ? lines.first.trim() : '';
+
+    if (sample.isEmpty) {
+      ToastUtil.warning(context, '无法提取有效样本');
+      return;
+    }
+
+    String selectedPlayType = 'single';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('教它识别这种格式'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('样本文本:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                const SizedBox(height: 4),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(sample, style: const TextStyle(fontFamily: 'monospace', fontSize: 13)),
+                ),
+                const SizedBox(height: 16),
+                const Text('这段文本应该识别为:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 250),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: PlayTypes.all.map((pt) => RadioListTile<String>(
+                        title: Text(pt.name, style: const TextStyle(fontSize: 14)),
+                        subtitle: Text(pt.ruleText, style: const TextStyle(fontSize: 11, color: AppColors.textLight)),
+                        value: pt.code,
+                        groupValue: selectedPlayType,
+                        onChanged: (v) => setState(() => selectedPlayType = v!),
+                        dense: true,
+                        activeColor: pt.color,
+                      )).toList(),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withAlpha(20),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    '💡 提示：系统会分析这段文本的特征，以后遇到类似格式会自动识别为此玩法。',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final config = PlayTypes.getByCode(selectedPlayType);
+                if (config == null) return;
+                final id = await Provider.of<LearnedPatternProvider>(context, listen: false).addPattern(
+                  sample,
+                  selectedPlayType,
+                  config.name,
+                );
+                if (id > 0) {
+                  if (mounted) ToastUtil.success(context, '已学会：${config.name}格式');
+                  // 重新解析当前输入
+                  _onInputChanged(_inputController.text);
+                } else {
+                  if (mounted) ToastUtil.error(context, '学习失败');
+                }
+              },
+              child: const Text('确认学习'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _manageTemplates() {
@@ -442,6 +548,17 @@ class _EntryPageState extends State<EntryPage> {
               onPressed: _manageTemplates,
               icon: const Icon(Icons.bookmark, size: 16),
               label: const Text('管理模板', style: TextStyle(fontSize: 12)),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: _showLearnPatternDialog,
+              icon: const Icon(Icons.psychology, size: 16),
+              label: const Text('教它识别', style: TextStyle(fontSize: 12)),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 8),
               ),

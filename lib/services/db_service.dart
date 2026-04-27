@@ -5,6 +5,7 @@ import '../models/bet_record.dart';
 import '../models/draw_record.dart';
 import '../models/app_settings.dart';
 import '../models/template_record.dart';
+import '../models/learned_pattern.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -35,7 +36,7 @@ class DatabaseHelper {
   Future<Database> _initDB(String filePath) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
-    return await openDatabase(path, version: 5, onCreate: _onCreate, onUpgrade: _onUpgrade);
+    return await openDatabase(path, version: 6, onCreate: _onCreate, onUpgrade: _onUpgrade);
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -113,6 +114,18 @@ class DatabaseHelper {
         default_multiplier TEXT DEFAULT '2',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE learned_patterns (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sample_text TEXT NOT NULL,
+        play_type TEXT NOT NULL,
+        play_type_name TEXT NOT NULL,
+        pattern TEXT NOT NULL,
+        priority INTEGER DEFAULT 100,
+        created_at TEXT NOT NULL
       )
     ''');
   }
@@ -194,6 +207,23 @@ class DatabaseHelper {
         ''');
       } catch (e) {
         print('Database upgrade v5 error: $e');
+      }
+    }
+    if (oldVersion < 6) {
+      try {
+        await _createTableIfNotExists(db, 'learned_patterns', '''
+          CREATE TABLE learned_patterns (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sample_text TEXT NOT NULL,
+            play_type TEXT NOT NULL,
+            play_type_name TEXT NOT NULL,
+            pattern TEXT NOT NULL,
+            priority INTEGER DEFAULT 100,
+            created_at TEXT NOT NULL
+          )
+        ''');
+      } catch (e) {
+        print('Database upgrade v6 error: $e');
       }
     }
   }
@@ -799,6 +829,48 @@ class DatabaseHelper {
       }
     } catch (e) {
       print('saveCustomFormatRules error: $e');
+    }
+  }
+
+  Future<List<LearnedPattern>> getAllLearnedPatterns() async {
+    try {
+      final db = await database;
+      final result = await db.query('learned_patterns', orderBy: 'priority DESC, created_at DESC');
+      return result.map((e) => LearnedPattern.fromMap(e)).toList();
+    } catch (e) {
+      print('getAllLearnedPatterns error: $e');
+      return [];
+    }
+  }
+
+  Future<int> insertLearnedPattern(LearnedPattern pattern) async {
+    try {
+      final db = await database;
+      return await db.insert('learned_patterns', pattern.toMap());
+    } catch (e) {
+      print('insertLearnedPattern error: $e');
+      return -1;
+    }
+  }
+
+  Future<int> updateLearnedPattern(LearnedPattern pattern) async {
+    try {
+      if (pattern.id == null) return 0;
+      final db = await database;
+      return await db.update('learned_patterns', pattern.toMap(), where: 'id = ?', whereArgs: [pattern.id]);
+    } catch (e) {
+      print('updateLearnedPattern error: $e');
+      return 0;
+    }
+  }
+
+  Future<int> deleteLearnedPattern(int id) async {
+    try {
+      final db = await database;
+      return await db.delete('learned_patterns', where: 'id = ?', whereArgs: [id]);
+    } catch (e) {
+      print('deleteLearnedPattern error: $e');
+      return 0;
     }
   }
 
