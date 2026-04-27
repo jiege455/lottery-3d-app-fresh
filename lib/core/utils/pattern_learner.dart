@@ -47,12 +47,13 @@ class PatternLearner {
       },
     );
 
-    // 步骤6: 将占位符还原为命名捕获组
+    // 步骤6: 将占位符还原为捕获组（使用编号组而非命名组，Dart兼容性好）
+    // 组1: 3位数字, 组2: 2位数字, 组3: 1位数字, 组4: 倍数
     pattern = pattern
-        .replaceAll('__N3__', r'(?<n3>\d{3})')
-        .replaceAll('__N2__', r'(?<n2>\d{2})')
-        .replaceAll('__N1__', r'(?<n1>\d)')
-        .replaceAll('__NUM__', r'(?<num>\d+\.?\d*)');
+        .replaceAll('__N3__', r'(\d{3})')
+        .replaceAll('__N2__', r'(\d{2})')
+        .replaceAll('__N1__', r'(\d)')
+        .replaceAll('__NUM__', r'(\d+\.?\d*)');
 
     return '^$pattern\$';
   }
@@ -77,25 +78,35 @@ class PatternLearner {
       final match = reg.firstMatch(line.trim());
       if (match == null) return null;
 
-      // 提取号码 (优先3位，其次2位，最后1位)
+      // 提取号码 - 按顺序检查各捕获组
+      // 组1: 3位数字, 组2: 2位数字, 组3: 1位数字
       String? number;
-      if (match.namedGroup('n3') != null) {
-        number = match.namedGroup('n3');
-      } else if (match.namedGroup('n2') != null) {
-        number = match.namedGroup('n2');
-      } else if (match.namedGroup('n1') != null) {
-        number = match.namedGroup('n1');
+      if (match.groupCount >= 1 && match.group(1) != null) {
+        number = match.group(1);
+      } else if (match.groupCount >= 2 && match.group(2) != null) {
+        number = match.group(2);
+      } else if (match.groupCount >= 3 && match.group(3) != null) {
+        number = match.group(3);
       }
 
       if (number == null || number.isEmpty) return null;
 
-      // 提取倍数
+      // 提取倍数 - 通常是最后一个捕获组
       double multiplier = defaultMultiplier;
-      final numStr = match.namedGroup('num');
-      if (numStr != null) {
-        final parsed = double.tryParse(numStr);
-        if (parsed != null && parsed > 0) {
-          multiplier = parsed;
+      String? numStr;
+      // 从后往前找数字组（倍数通常是最后匹配的）
+      for (var i = match.groupCount; i >= 1; i--) {
+        final group = match.group(i);
+        if (group != null && group.isNotEmpty) {
+          final parsed = double.tryParse(group);
+          if (parsed != null && parsed > 0) {
+            // 如果这个组不是号码（号码通常是3位），则认为是倍数
+            if (group.length != 3 || int.tryParse(group) == null) {
+              numStr = group;
+              multiplier = parsed;
+              break;
+            }
+          }
         }
       }
 
