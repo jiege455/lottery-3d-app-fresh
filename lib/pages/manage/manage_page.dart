@@ -14,6 +14,7 @@ import '../../models/app_settings.dart';
 import '../../widgets/toast.dart';
 import 'widgets/draw_data_list.dart';
 import 'widgets/play_type_amount_settings.dart';
+import '../pattern/pattern_manage_page.dart' as pattern;
 
 class ManagePage extends StatefulWidget {
   const ManagePage({super.key});
@@ -44,6 +45,7 @@ class _ManagePageState extends State<ManagePage> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(children: [
+        _buildCard(Icons.psychology, '智能识别设置', '添加案例让系统学习您的输入习惯', AppColors.primary, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const pattern.PatternManagePage()))),
         _buildCard(Icons.attach_money, '玩法金额设置', '自定义各玩法的投注金额', AppColors.success, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PlayTypeAmountSettingsPage()))),
         _buildCard(Icons.backup_outlined, '数据备份', '备份所有数据到文件', AppColors.primary, () => _showBackupDialog(context)),
         _buildCard(Icons.restore_outlined, '数据恢复', '从备份文件恢复数据', AppColors.warning, () => _showRestoreDialog(context)),

@@ -930,31 +930,30 @@ class BatchParser {
   static List<ParsedItem>? _tryParseLearnedPatterns(String input, List<LearnedPattern> patterns, {double defaultMultiplier = 1.0}) {
     final lines = input.split(RegExp(r'[\n\r]')).where((l) => l.trim().isNotEmpty).toList();
     final results = <ParsedItem>[];
-    final unmatchedLines = <String>[];
+    var hasMatched = false;
 
     for (final line in lines) {
       final trimmed = line.trim();
+      // 先尝试学习到的模式
       final matched = PatternLearner.tryMatchAll(trimmed, patterns, defaultMultiplier: defaultMultiplier);
       if (matched != null) {
         results.add(matched);
-      } else {
-        unmatchedLines.add(trimmed);
+        hasMatched = true;
+        continue;
       }
-    }
 
-    // 如果所有行都匹配了，返回结果
-    if (unmatchedLines.isEmpty) return results;
-
-    // 如果部分匹配，对未匹配的行使用默认解析
-    if (results.isNotEmpty) {
-      for (final line in unmatchedLines) {
-        final items = _parseLine(line, defaultMultiplier: defaultMultiplier);
+      // 如果学习模式不匹配，尝试默认解析
+      final items = _parseLine(trimmed, defaultMultiplier: defaultMultiplier);
+      if (items.isNotEmpty) {
         results.addAll(items);
+        hasMatched = true;
       }
-      return results;
     }
 
-    // 如果一行都没匹配，返回null让后续逻辑处理
+    // 只要有任何一行被解析成功，就返回结果
+    if (hasMatched) return results;
+
+    // 如果一行都没解析成功，返回null让后续逻辑处理
     return null;
   }
 
